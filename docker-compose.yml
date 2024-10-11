@@ -3,10 +3,8 @@ version: '3.8'
 services:
   db:
     image: postgres
-    environment:
-      POSTGRES_DB: uav_manufacturing_db
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
+    env_file:
+      - .env
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
