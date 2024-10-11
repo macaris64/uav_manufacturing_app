@@ -25,8 +25,8 @@ class AircraftViewSetIntegrationTests(ManufacturingTestSetup):
         Test to ensure the API confirms all required parts are present for an aircraft.
         """
         # Given: All required parts are added to the aircraft.
-        Part.objects.create(name='TAIL', aircraft=self.aircraft)
-        Part.objects.create(name='AVIONICS', aircraft=self.aircraft)
+        Part.objects.create(name='TAIL', aircraft_type=self.aircraft.name)
+        Part.objects.create(name='AVIONICS', aircraft_type=self.aircraft.name)
 
         # When: Checking parts for the specified aircraft.
         response = self.client.get(reverse('aircraft-check-parts', kwargs={'pk': self.aircraft.pk}))
@@ -170,9 +170,10 @@ class AircraftPartViewSetIntegrationTests(ManufacturingTestSetup):
         Test to ensure an AircraftPart can be created successfully.
         """
         # Given: Data for a successful AircraftPart creation.
+        part = Part.objects.create(name='WING', aircraft_type='TB2')  # Part creation with aircraft type
         data = {
-            'aircraft': self.aircraft.id,
-            'part': self.wing_part.id
+            'aircraft': self.aircraft.id,  # Uçak ID'si
+            'part': part.id  # Parça ID'si
         }
 
         # When: Sending a POST request to create AircraftPart.
@@ -180,7 +181,7 @@ class AircraftPartViewSetIntegrationTests(ManufacturingTestSetup):
 
         # Then: Expect a 201 CREATED response and verify the AircraftPart exists.
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertTrue(AircraftPart.objects.filter(aircraft=self.aircraft, part=self.wing_part).exists())
+        self.assertTrue(AircraftPart.objects.filter(aircraft=self.aircraft, part=part).exists())
 
     def test_create_aircraft_part_without_required_fields(self):
         """

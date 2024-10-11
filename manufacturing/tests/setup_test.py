@@ -27,8 +27,8 @@ class ManufacturingTestSetup(APITestCase):
         self.personnel = Personnel.objects.create(name='John Doe', team=self.wing_team, role='Engineer')
 
         # Create Parts and assign to the respective teams
-        self.wing_part = Part.objects.create(name='WING', aircraft=self.aircraft)
-        self.body_part = Part.objects.create(name='BODY', aircraft=self.aircraft)
+        self.wing_part = Part.objects.create(name=Part.WING, aircraft_type='TB2')
+        self.body_part = Part.objects.create(name=Part.BODY, aircraft_type='TB2')
 
         # URL for Aircraft Part API endpoint
         self.aircraft_part_url = reverse('aircraftpart-list')

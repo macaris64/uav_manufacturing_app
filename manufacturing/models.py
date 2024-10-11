@@ -1,6 +1,9 @@
 import uuid
 
+from django.core.exceptions import ValidationError
 from django.db import models
+from django.utils.translation import gettext_lazy as _
+
 
 class Aircraft(models.Model):
     TB2 = 'TB2'
@@ -27,6 +30,12 @@ class Part(models.Model):
     BODY = 'BODY'
     TAIL = 'TAIL'
     AVIONICS = 'AVIONICS'
+    AIRCRAFT_TYPES = [
+        ('AKINCI', 'AKINCI'),
+        ('TB2', 'TB2'),
+        ('TB3', 'TB3'),
+        ('KIZILELMA', 'KIZILELMA'),
+    ]
     PART_TYPES = [
         (WING, 'Wing'),
         (BODY, 'Body'),
@@ -34,12 +43,12 @@ class Part(models.Model):
         (AVIONICS, 'Avionics'),
     ]
 
-    name = models.CharField(max_length=50, choices=PART_TYPES)
-    aircraft = models.ForeignKey(Aircraft, on_delete=models.CASCADE)
+    name = models.CharField(max_length=50, choices=[(WING, 'Wing'), (BODY, 'Body'), (TAIL, 'Tail'), (AVIONICS, 'Avionics')])
+    aircraft_type = models.CharField(max_length=20, choices=AIRCRAFT_TYPES)
     created_at = models.DateField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.name} - {self.aircraft.name}"
+        return f"{self.name} - {self.aircraft_type}"
 
 
 class Team(models.Model):
@@ -76,8 +85,28 @@ class AircraftPart(models.Model):
 
     class Meta:
         constraints = [
-            models.UniqueConstraint(fields=['part'], name='unique_part_per_aircraft')
+            models.UniqueConstraint(fields=['part', 'aircraft'], name='unique_part_per_aircraft')
         ]
 
     def __str__(self):
         return f"{self.aircraft.name} - {self.part.name}"
+
+    def clean(self):
+        # Check if this part is already assigned to another aircraft
+        if AircraftPart.objects.filter(part=self.part).exclude(aircraft=self.aircraft).exists():
+            raise ValidationError(_("This part is already assigned to another aircraft."))
+
+        # Check if the part is compatible with the aircraft type
+        if self.part.aircraft_type != self.aircraft.name:
+            raise ValidationError(
+                _(f"The part {self.part.name} is not compatible with the aircraft type {self.aircraft.name}.")
+            )
+
+            # Check if this aircraft already has a part of this type
+        if AircraftPart.objects.filter(
+                aircraft=self.aircraft,
+                part__name=self.part.name  # Ensure only one part type is added
+        ).exclude(id=self.id).exists():
+            raise ValidationError(
+                _(f"The aircraft {self.aircraft.name} already has a part of type {self.part.name}.")
+            )

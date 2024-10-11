@@ -1,5 +1,3 @@
-from unittest import skip
-
 from django.db import transaction, IntegrityError
 from django.test import TestCase, TransactionTestCase
 from unittest.mock import Mock
@@ -45,12 +43,12 @@ class PartIsNotUsedInOtherAircraftTests(TransactionTestCase):
         self.permission = PartIsNotUsedInOtherAircraft()
         self.aircraft = Aircraft.objects.create(name="TB2", serial_number='123e4567-e89b-12d3-a456-426614174000')
         self.team = Team.objects.create(name='Wing Team')
-        self.part = Part.objects.create(name='WING', aircraft=self.aircraft)
+        self.part = Part.objects.create(name='WING', aircraft_type=self.aircraft.name)
         self.aircraft_part = AircraftPart.objects.create(aircraft=self.aircraft, part=self.part)
 
     def test_part_is_not_used_in_another_aircraft(self):
         # Given: A new part that is not used in any other aircraft
-        new_part = Part.objects.create(name='BODY', aircraft=self.aircraft)
+        new_part = Part.objects.create(name='BODY', aircraft_type=self.aircraft.name)
         request = Mock()
         request.data = {'part': new_part.id}
         view = Mock(action='create')
@@ -88,7 +86,7 @@ class PartBelongsToAircraftTypeTests(TestCase):
         self.permission = PartBelongsToAircraftType()
         self.aircraft = Aircraft.objects.create(name="TB2", serial_number='123e4567-e89b-12d3-a456-426614174000')
         self.team = Team.objects.create(name='Wing Team')
-        self.part = Part.objects.create(name='WING', aircraft=self.aircraft)
+        self.part = Part.objects.create(name='WING', aircraft_type=self.aircraft.name)
 
     def test_part_belongs_to_correct_aircraft(self):
         # Given: A request with a part that belongs to the correct aircraft type

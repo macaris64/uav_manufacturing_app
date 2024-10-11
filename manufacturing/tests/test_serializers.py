@@ -46,7 +46,7 @@ class TeamSerializerTests(TestCase):
     def setUp(self):
         # Given: An Aircraft to associate with Part
         self.aircraft = Aircraft.objects.create(name='TB2', serial_number='123e4567-e89b-12d3-a456-426614174000')
-        self.part = Part.objects.create(name='WING', aircraft=self.aircraft)  # Use the valid aircraft
+        self.part = Part.objects.create(name='WING', aircraft_type=self.aircraft.name)  # Use the valid aircraft
         self.team_data = {
             'name': 'Body Team',
             'description': 'Responsible for wing parts',
@@ -82,10 +82,10 @@ class PartSerializerTests(TestCase):
     def setUp(self):
         # Given: An Aircraft object for Part association
         self.aircraft = Aircraft.objects.create(name='TB2', serial_number='123e4567-e89b-12d3-a456-426614174000')
-        self.part = Part.objects.create(name='WING', aircraft=self.aircraft)
+        self.part = Part.objects.create(name='WING', aircraft_type=self.aircraft.name)
         self.team = Team.objects.create(name='Wing Team')
         self.team.parts.add(self.part)
-        self.part_data = {'name': 'WING', 'aircraft': self.aircraft.id}
+        self.part_data = {'name': 'WING', 'aircraft_type': self.aircraft.name}
 
     def test_part_serialization(self):
         # When: Creating and serializing the Part object
@@ -95,7 +95,7 @@ class PartSerializerTests(TestCase):
         self.assertEqual(serializer.data, {
             'id': self.part.id,
             'name': 'WING',
-            'aircraft': self.aircraft.id,
+            'aircraft_type': self.aircraft.name,
             'created_at': self.part.created_at.strftime('%Y-%m-%d')
         })
 
@@ -107,7 +107,7 @@ class PartSerializerTests(TestCase):
         self.assertTrue(serializer.is_valid(), serializer.errors)
         part = serializer.save()
         self.assertEqual(part.name, 'WING')
-        self.assertEqual(part.aircraft, self.aircraft)
+        self.assertEqual(part.aircraft_type, self.aircraft.name)
 
 
 class PersonnelSerializerTests(TestCase):
@@ -146,7 +146,7 @@ class AircraftPartSerializerTests(TestCase):
         # Given: Aircraft, Team, and Part objects for AircraftPart association
         self.aircraft = Aircraft.objects.create(name='TB2', serial_number='123e4567-e89b-12d3-a456-426614174000')
         self.team = Team.objects.create(name='Wing Team')
-        self.part = Part.objects.create(name='WING', aircraft=self.aircraft)
+        self.part = Part.objects.create(name='WING', aircraft_type=self.aircraft.name)
         self.aircraft_part_data = {'aircraft': self.aircraft.id, 'part': self.part.id}
 
     def test_aircraft_part_serialization(self):

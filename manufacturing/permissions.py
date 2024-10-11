@@ -1,6 +1,5 @@
-from django.utils.formats import number_format
 from rest_framework.permissions import BasePermission
-from manufacturing.models import Part, Team, AircraftPart
+from manufacturing.models import Part, Team, AircraftPart, Aircraft
 
 
 class CanOnlyCreateAssignedPart(BasePermission):
@@ -57,8 +56,9 @@ class PartBelongsToAircraftType(BasePermission):
 
             # Retrieve the part based on part_id
             part = Part.objects.filter(id=part_id).first()
+            aircraft = Aircraft.objects.filter(id=aircraft_id).first()
 
             # Deny permission if the part's aircraft type does not match the requested aircraft
-            if part and number_format(part.aircraft.id) != number_format(aircraft_id):
+            if part and part.aircraft_type != aircraft.name:
                 return False
         return True  # Permission granted if conditions are met

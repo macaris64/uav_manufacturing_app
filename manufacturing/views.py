@@ -27,7 +27,7 @@ class AircraftViewSet(viewsets.ModelViewSet):
         aircraft = self.get_object()
 
         required_parts = ['WING', 'BODY', 'TAIL', 'AVIONICS']
-        available_parts = Part.objects.filter(aircraft=aircraft).values_list('name', flat=True)
+        available_parts = Part.objects.filter(aircraft_type=aircraft.name).values_list('name', flat=True)
 
         missing_parts = [part for part in required_parts if part not in available_parts]
 
@@ -60,10 +60,14 @@ class PartViewSet(viewsets.ModelViewSet):
     serializer_class = PartSerializer
     permission_classes = [CanOnlyCreateAssignedPart]
 
+    def perform_create(self, serializer):
+        serializer.save()
+
     def get_queryset(self):
         # Limit parts to those that the user is allowed to see based on their teams
         user_teams = self.request.user.team_set.all()  # Adjust based on your user model
         return self.queryset.filter(teams__in=user_teams)
+
 
 class PersonnelViewSet(viewsets.ModelViewSet):
     """
@@ -84,6 +88,7 @@ class AircraftPartViewSet(viewsets.ModelViewSet):
     queryset = AircraftPart.objects.all()
     serializer_class = AircraftPartSerializer
 
+
     def perform_create(self, serializer):
         """
         Overridden method to perform custom checks before creating an AircraftPart.
@@ -91,6 +96,10 @@ class AircraftPartViewSet(viewsets.ModelViewSet):
         - Ensures that the part is not already assigned to another aircraft using PartIsNotUsedInOtherAircraft.
         - Raises PermissionDenied if any validation fails.
         """
+        if self.request.user.is_staff:
+            serializer.save()
+            return
+
         errors = []
 
         # Check if the part belongs to the correct aircraft type
@@ -103,7 +112,7 @@ class AircraftPartViewSet(viewsets.ModelViewSet):
 
         # If there are any errors, raise PermissionDenied with all error messages
         if errors:
-            raise PermissionDenied(detail=" ".join(errors))
+            raise PermissionDenied(" ".join(errors))
 
         # Save the serializer if all checks pass
         serializer.save()

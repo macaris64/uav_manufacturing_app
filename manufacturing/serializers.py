@@ -14,7 +14,10 @@ class TeamSerializer(serializers.ModelSerializer):
 class PartSerializer(serializers.ModelSerializer):
     class Meta:
         model = Part
-        fields = '__all__'
+        fields = ['id', 'name', 'aircraft_type', 'created_at']
+
+    def create(self, validated_data):
+        return Part.objects.create(**validated_data)
 
 class PersonnelSerializer(serializers.ModelSerializer):
     class Meta:

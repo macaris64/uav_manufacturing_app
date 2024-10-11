@@ -62,11 +62,12 @@ class AircraftPartViewSetUnitTests(TestCase):
         # Given: a view instance with mock serializer and request
         view = AircraftPartViewSet()
         view.request = Mock()
+        view.request.user = Mock(is_staff=False)  # Ensure user is not staff
         view.action = 'create'
 
-        # Create a Team instance for the Part
+        # Create an Aircraft instance and a Part instance
         aircraft = Aircraft.objects.create(name='TB2', serial_number='123e4567-e89b-12d3-a456-426614174000')
-        part = Part.objects.create(name='WING', aircraft=aircraft)
+        part = Part.objects.create(name='WING', aircraft_type=aircraft.name)
 
         # Mock serializer with validated data as dictionary
         serializer = Mock()
@@ -87,12 +88,13 @@ class AircraftPartViewSetUnitTests(TestCase):
         # Given: a view instance where the part belongs to another aircraft
         view = AircraftPartViewSet()
         view.request = Mock()
+        view.request.user = Mock(is_staff=False)
         view.action = 'create'
 
         # Create real instances for testing
         aircraft1 = Aircraft.objects.create(name='TB2', serial_number='123e4567-e89b-12d3-a456-426614174000')
         aircraft2 = Aircraft.objects.create(name='TB3', serial_number='123e4567-e89b-12d3-a456-426614174001')
-        part = Part.objects.create(name='WING', aircraft=aircraft1)
+        part = Part.objects.create(name='WING', aircraft_type=aircraft1.name)
 
         # Mock serializer with validated data
         serializer = Mock()
@@ -113,7 +115,7 @@ class AircraftPartViewSetUnitTests(TestCase):
 
         # Create real instances for testing
         aircraft = Aircraft.objects.create(name='TB2', serial_number='123e4567-e89b-12d3-a456-426614174000')
-        part = Part.objects.create(name='WING', aircraft=aircraft)
+        part = Part.objects.create(name='WING', aircraft_type=aircraft.name)
 
         # Mock serializer and filter to allow creation
         serializer = Mock()
@@ -137,7 +139,7 @@ class AircraftPartViewSetUnitTests(TestCase):
         team = Team.objects.create(name='Wing Team', description='Responsible for wing parts')
 
         # When: Creating a new Part and then assigning it to the Team
-        part = Part.objects.create(name='WING', aircraft=aircraft)  # Part created without direct team assignment
+        part = Part.objects.create(name='WING', aircraft_type=aircraft.name)  # Part created without direct team assignment
         team.parts.add(part)  # Assigning the part to the team
 
         # Then: The team should have the assigned part
@@ -147,7 +149,7 @@ class AircraftPartViewSetUnitTests(TestCase):
         # Given: An Aircraft and a non-responsible Team
         aircraft = Aircraft.objects.create(name='TB2', serial_number='123e4567-e89b-12d3-a456-426614174001')
         avionic_team = Team.objects.create(name='Avionic Team', description='Responsible for avionic parts')
-        wing_part = Part.objects.create(name='WING', aircraft=aircraft)
+        wing_part = Part.objects.create(name='WING', aircraft_type=aircraft.name)
 
         # When: Attempting to assign the wing part to the avionic team
         can_assign = avionic_team.can_produce_part(wing_part)  # Check if the team can assign the part
