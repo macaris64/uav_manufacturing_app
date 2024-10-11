@@ -26,7 +26,8 @@ class AircraftSerializerTests(TestCase):
             'id': self.aircraft.id,
             'name': 'TB2',
             'serial_number': '123e4567-e89b-12d3-a456-426614174000',
-            'created_at': self.aircraft.created_at.strftime('%Y-%m-%d')
+            'created_at': self.aircraft.created_at.strftime('%Y-%m-%d'),
+            'is_produced': False,
         })
 
     def test_aircraft_deserialization(self):

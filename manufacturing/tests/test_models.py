@@ -25,13 +25,17 @@ class AircraftPartModelTests(ManufacturingTestSetup, TestCase):
     def test_part_cannot_be_reassigned_to_another_aircraft(self):
         # Given: An AircraftPart associated with the current Aircraft and Part
         AircraftPart.objects.create(aircraft=self.aircraft, part=self.wing_part)
-        new_aircraft = Aircraft.objects.create(name='TB3')
+        new_aircraft = Aircraft.objects.create(name='TB3', serial_number='123e4567-e89b-12d3-a456-426614174002')
 
         # When: Attempting to assign the same Part to a different Aircraft
-        # Then: An IntegrityError should be raised due to the uniqueness constraint
-        with self.assertRaises(IntegrityError):
-            with transaction.atomic():
-                AircraftPart.objects.create(aircraft=new_aircraft, part=self.wing_part)
+        aircraft_part = AircraftPart(aircraft=new_aircraft, part=self.wing_part)
+
+        # Then: A ValidationError should be raised due to the uniqueness constraint in clean()
+        with self.assertRaises(ValidationError):
+            aircraft_part.clean()
+            aircraft_part.save()
+
+        # Confirm only one AircraftPart exists
         self.assertEqual(AircraftPart.objects.count(), 1)
 
     def test_unique_part_per_aircraft(self):
@@ -44,8 +48,9 @@ class AircraftPartModelTests(ManufacturingTestSetup, TestCase):
 
         # Then: An IntegrityError should be raised if trying to associate the same part with a different aircraft
         aircraft2 = Aircraft.objects.create(name='TB3', serial_number='123e4567-e89b-12d3-a456-426614174002')
-        with self.assertRaises(IntegrityError):
-            AircraftPart.objects.create(aircraft=aircraft2, part=part)
+        with self.assertRaises(ValidationError):
+            aircraft_part = AircraftPart(aircraft=aircraft2, part=part)
+            aircraft_part.clean()
 
     def test_part_type_constraint(self):
         # Given: An Aircraft and a Part of a different type associated with it
@@ -83,6 +88,44 @@ class AircraftModelTests(ManufacturingTestSetup, TestCase):
         # Then: The updated name should be saved correctly
         updated_aircraft = Aircraft.objects.get(id=self.aircraft.id)
         self.assertEqual(updated_aircraft.name, 'Updated TB2')
+
+    def test_aircraft_is_produced_when_all_parts_are_added(self):
+        """Test that an aircraft is marked as produced when all required parts are added."""
+        # Given: An aircraft and all required parts
+        aircraft = Aircraft.objects.create(name='TB2')
+        parts = [
+            Part.objects.create(name=Part.WING, aircraft_type='TB2'),
+            Part.objects.create(name=Part.BODY, aircraft_type='TB2'),
+            Part.objects.create(name=Part.TAIL, aircraft_type='TB2'),
+            Part.objects.create(name=Part.AVIONICS, aircraft_type='TB2')
+        ]
+
+        # When: Each part is added to the aircraft
+        for part in parts:
+            AircraftPart.objects.create(aircraft=aircraft, part=part)
+
+        # Then: The aircraft should be marked as produced
+        aircraft.refresh_from_db()  # Refresh the aircraft object from the database
+        self.assertTrue(aircraft.is_produced)
+
+    def test_aircraft_not_produced_with_missing_parts(self):
+        """Test that an aircraft is not marked as produced when some parts are missing."""
+        # Given: An aircraft and some of the required parts (missing one)
+        aircraft = Aircraft.objects.create(name='TB2')
+        parts = [
+            Part.objects.create(name=Part.WING, aircraft_type='TB2'),
+            Part.objects.create(name=Part.BODY, aircraft_type='TB2'),
+            Part.objects.create(name=Part.TAIL, aircraft_type='TB2')
+            # AVIONICS part is missing
+        ]
+
+        # When: Adding only the available parts to the aircraft
+        for part in parts:
+            AircraftPart.objects.create(aircraft=aircraft, part=part)
+
+        # Then: The aircraft should not be marked as produced
+        aircraft.refresh_from_db()
+        self.assertFalse(aircraft.is_produced)
 
 
 class TeamModelTests(ManufacturingTestSetup, TestCase):

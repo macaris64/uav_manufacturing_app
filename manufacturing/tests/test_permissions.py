@@ -1,3 +1,4 @@
+from django.core.exceptions import ValidationError
 from django.db import transaction, IntegrityError
 from django.test import TestCase, TransactionTestCase
 from unittest.mock import Mock
@@ -63,10 +64,12 @@ class PartIsNotUsedInOtherAircraftTests(TransactionTestCase):
         # Given: A part already used in another aircraft
         new_aircraft = Aircraft.objects.create(name='TB3')
 
-        with transaction.atomic():
-            # When: Attempting to reuse the part in another aircraft, an IntegrityError is expected
-            with self.assertRaises(IntegrityError):
-                AircraftPart.objects.create(aircraft=new_aircraft, part=self.part)
+        # When: Attempting to reuse the part in another aircraft, a ValidationError is expected
+        with self.assertRaises(ValidationError):
+            with transaction.atomic():
+                aircraft_part = AircraftPart(aircraft=new_aircraft, part=self.part)
+                aircraft_part.clean()  # ValidationError expected
+                aircraft_part.save()
 
         # Given: Reuse the part in the permission check request
         request = Mock()

@@ -20,9 +20,21 @@ class Aircraft(models.Model):
     name = models.CharField(max_length=20, choices=AIRCRAFT_TYPES)
     serial_number = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     created_at = models.DateField(auto_now_add=True)
+    is_produced = models.BooleanField(default=False, editable=False)
 
     def __str__(self):
         return f"{self.name} - {self.serial_number}"
+
+    def check_production_status(self):
+        # List of required part names
+        required_part_names = {part[0] for part in Part.PART_TYPES}
+
+        # List of current part names associated with this aircraft
+        current_part_names = set(self.aircraftpart_set.values_list('part__name', flat=True))
+
+        # Check if all required parts are present
+        self.is_produced = required_part_names == current_part_names
+        self.save()
 
 
 class Part(models.Model):
@@ -85,6 +97,7 @@ class AircraftPart(models.Model):
 
     class Meta:
         constraints = [
+            models.UniqueConstraint(fields=['part'], name='unique_part_assignment'),
             models.UniqueConstraint(fields=['part', 'aircraft'], name='unique_part_per_aircraft')
         ]
 

@@ -27,7 +27,8 @@ class AircraftPartInline(admin.TabularInline):
 
 class AircraftAdmin(admin.ModelAdmin):
     inlines = [AircraftPartInline]
-    list_display = ('name', 'serial_number', 'created_at')
+    list_display = ('name', 'serial_number', 'created_at', 'is_produced')
+    readonly_fields = ('is_produced',)
 
 # Register your models here.
 admin.site.register(Aircraft, AircraftAdmin)
