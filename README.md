@@ -28,6 +28,13 @@ docker-compose run web python manage.py test manufacturing.tests
 docker-compose run web python manage.py test manufacturing.tests.test_models
 ```
 
+## Coverage
+```bash
+docker-compose run web coverage run --source='.' manage.py test manufacturing.tests
+docker-compose run web coverage report
+docker-compose run web coverage html
+```
+
 ## Create a Superuser
 ```bash
 docker-compose run web python manage.py createsuperuser
