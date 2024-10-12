@@ -11,7 +11,7 @@ class CanOnlyCreateAssignedPartTests(TestCase):
         # Given: Setup mock data and initialize permission class
         self.permission = CanOnlyCreateAssignedPart()
         self.aircraft = Aircraft.objects.create(name="TB2")
-        self.team = Team.objects.create(name='Wing Team')
+        self.team, _ = Team.objects.get_or_create(name='Wing Team')
 
     def test_team_can_create_assigned_part(self):
         # Given: A request with a part that the team is authorized to create
@@ -43,7 +43,7 @@ class PartIsNotUsedInOtherAircraftTests(TransactionTestCase):
         # Given: Initialize permission class and setup test data
         self.permission = PartIsNotUsedInOtherAircraft()
         self.aircraft = Aircraft.objects.create(name="TB2", serial_number='123e4567-e89b-12d3-a456-426614174000')
-        self.team = Team.objects.create(name='Wing Team')
+        self.team, _ = Team.objects.get_or_create(name='Wing Team')  # Changed to get_or_create
         self.part = Part.objects.create(name='WING', aircraft_type=self.aircraft.name)
         self.aircraft_part = AircraftPart.objects.create(aircraft=self.aircraft, part=self.part)
 
@@ -88,7 +88,7 @@ class PartBelongsToAircraftTypeTests(TestCase):
         # Given: Initialize permission class and create necessary mock data
         self.permission = PartBelongsToAircraftType()
         self.aircraft = Aircraft.objects.create(name="TB2", serial_number='123e4567-e89b-12d3-a456-426614174000')
-        self.team = Team.objects.create(name='Wing Team')
+        self.team, _ = Team.objects.get_or_create(name='Wing Team')  # Changed to get_or_create
         self.part = Part.objects.create(name='WING', aircraft_type=self.aircraft.name)
 
     def test_part_belongs_to_correct_aircraft(self):

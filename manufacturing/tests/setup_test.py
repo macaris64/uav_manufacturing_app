@@ -20,8 +20,8 @@ class ManufacturingTestSetup(APITestCase):
         self.aircraft = Aircraft.objects.create(name='TB2', serial_number='123e4567-e89b-12d3-a456-426614174000')
 
         # Create Teams responsible for specific parts
-        self.wing_team = Team.objects.create(name='Wing Team', description='Responsible for wing parts')
-        self.body_team = Team.objects.create(name='Body Team', description='Responsible for body parts')
+        self.wing_team, _ = Team.objects.get_or_create(name=Team.WING_TEAM, description="Responsible for wing parts")
+        self.body_team, _ = Team.objects.get_or_create(name=Team.BODY_TEAM, description="Responsible for body parts")
 
         # Create Personnel and assign to the Wing Team
         self.personnel_user = User.objects.create_user(username='john_doe', password='password123')

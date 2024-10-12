@@ -59,24 +59,43 @@ class Part(models.Model):
     name = models.CharField(max_length=50, choices=[(WING, 'Wing'), (BODY, 'Body'), (TAIL, 'Tail'), (AVIONICS, 'Avionics')])
     aircraft_type = models.CharField(max_length=20, choices=AIRCRAFT_TYPES)
     created_at = models.DateField(auto_now_add=True)
+    is_used = models.BooleanField(default=False)
 
     def __str__(self):
         return f"{self.name} - {self.aircraft_type}"
 
 
 class Team(models.Model):
-    name = models.CharField(max_length=50, unique=True)
+    WING_TEAM = 'Wing Team'
+    BODY_TEAM = 'Body Team'
+    TAIL_TEAM = 'Tail Team'
+    AVIONICS_TEAM = 'Avionics Team'
+    ASSEMBLY_TEAM = 'Assembly Team'
+
+    TEAM_TYPES = [
+        (WING_TEAM, 'Wing Team'),
+        (BODY_TEAM, 'Body Team'),
+        (TAIL_TEAM, 'Tail Team'),
+        (AVIONICS_TEAM, 'Avionics Team'),
+        (ASSEMBLY_TEAM, 'Assembly Team'),
+    ]
+
+    name = models.CharField(max_length=50, choices=TEAM_TYPES, unique=True)
     description = models.TextField(blank=True, null=True)
-    parts = models.ManyToManyField(Part, related_name='teams')
 
     def can_produce_part(self, part):
-        return part in self.parts.all()
+        if self.name == self.WING_TEAM and part.name == Part.WING:
+            return True
+        if self.name == self.BODY_TEAM and part.name == Part.BODY:
+            return True
+        if self.name == self.TAIL_TEAM and part.name == Part.TAIL:
+            return True
+        if self.name == self.AVIONICS_TEAM and part.name == Part.AVIONICS:
+            return True
+        return False  # Assembly team can't produce any parts
 
-    def add_part(self, part):
-        if self.can_produce_part(part):
-            self.parts.add(part)
-        else:
-            raise ValueError(f"{self.name} cannot produce part {part.name}.")
+    def can_attach_parts(self):
+        return self.name == self.ASSEMBLY_TEAM
 
     def __str__(self):
         return self.name
@@ -105,6 +124,11 @@ class AircraftPart(models.Model):
             models.UniqueConstraint(fields=['part'], name='unique_part_assignment'),
             models.UniqueConstraint(fields=['part', 'aircraft'], name='unique_part_per_aircraft')
         ]
+
+    def save(self, *args, **kwargs):
+        self.part.is_used = True
+        self.part.save(update_fields=['is_used'])
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.aircraft.name} - {self.part.name}"

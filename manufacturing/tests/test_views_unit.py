@@ -56,8 +56,7 @@ class AircraftViewSetUnitTests(TestCase):
 class AircraftPartViewSetUnitTests(TestCase):
 
     @patch('manufacturing.permissions.PartBelongsToAircraftType.has_permission', return_value=True)
-    @patch('manufacturing.permissions.PartIsNotUsedInOtherAircraft.has_permission',
-           return_value=False)  # Simulate part already used
+    @patch('manufacturing.permissions.PartIsNotUsedInOtherAircraft.has_permission', return_value=False)
     def test_perform_create_part_already_used(self, mock_part_is_not_used, mock_part_belongs):
         # Given: a view instance with mock serializer and request
         view = AircraftPartViewSet()
@@ -84,7 +83,8 @@ class AircraftPartViewSetUnitTests(TestCase):
     @patch('manufacturing.permissions.PartBelongsToAircraftType.has_permission', return_value=False)
     @patch('manufacturing.permissions.PartIsNotUsedInOtherAircraft.has_permission', return_value=True)
     @patch('manufacturing.views.AircraftPart.objects.filter')
-    def test_perform_create_part_belongs_to_another_aircraft(self, mock_filter, mock_part_is_not_used, mock_part_belongs):
+    def test_perform_create_part_belongs_to_another_aircraft(self, mock_filter, mock_part_is_not_used,
+                                                             mock_part_belongs):
         # Given: a view instance where the part belongs to another aircraft
         view = AircraftPartViewSet()
         view.request = Mock()
@@ -136,14 +136,16 @@ class AircraftPartViewSetUnitTests(TestCase):
     def test_create_part_with_team_association(self):
         # Given: An Aircraft and a Team
         aircraft = Aircraft.objects.create(name='TB2', serial_number='123e4567-e89b-12d3-a456-426614174000')
-        team = Team.objects.create(name='Wing Team', description='Responsible for wing parts')
+        team, _ = Team.objects.get_or_create(name=Team.WING_TEAM, description="Responsible for wing parts")
 
-        # When: Creating a new Part and then assigning it to the Team
-        part = Part.objects.create(name='WING', aircraft_type=aircraft.name)  # Part created without direct team assignment
-        team.parts.add(part)  # Assigning the part to the team
+        # When: Creating a new Part
+        part = Part.objects.create(name='WING', aircraft_type=aircraft.name)
 
-        # Then: The team should have the assigned part
-        self.assertIn(part, team.parts.all())  # Verify the part is associated with the team
+        # Check if the team can produce the part
+        can_produce = team.can_produce_part(part)
+
+        # Then: The team should be able to produce the assigned part
+        self.assertTrue(can_produce)
 
     def test_cannot_assign_part_to_non_responsible_team(self):
         # Given: An Aircraft and a non-responsible Team
@@ -151,12 +153,8 @@ class AircraftPartViewSetUnitTests(TestCase):
         avionic_team = Team.objects.create(name='Avionic Team', description='Responsible for avionic parts')
         wing_part = Part.objects.create(name='WING', aircraft_type=aircraft.name)
 
-        # When: Attempting to assign the wing part to the avionic team
-        can_assign = avionic_team.can_produce_part(wing_part)  # Check if the team can assign the part
+        # When: Checking if the avionic team can produce a wing part
+        can_assign = avionic_team.can_produce_part(wing_part)
 
         # Then: The team should not be able to assign the wing part
         self.assertFalse(can_assign)
-
-        # Expecting an exception when trying to add the part directly
-        with self.assertRaises(ValueError):  # Expect a ValueError for non-responsible team
-            avionic_team.add_part(wing_part)

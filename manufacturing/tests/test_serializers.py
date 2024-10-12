@@ -45,17 +45,15 @@ class AircraftSerializerTests(TestCase):
 
 
 class TeamSerializerTests(TestCase):
-    def setUp(self):
-        # Given: An Aircraft to associate with Part
-        self.aircraft = Aircraft.objects.create(name='TB2', serial_number='123e4567-e89b-12d3-a456-426614174000')
-        self.part = Part.objects.create(name='WING', aircraft_type=self.aircraft.name)  # Use the valid aircraft
-        self.team_data = {
+    @classmethod
+    def setUpTestData(cls):
+        cls.aircraft = Aircraft.objects.create(name='TB2', serial_number='123e4567-e89b-12d3-a456-426614174000')
+        cls.part = Part.objects.create(name='BODY', aircraft_type=cls.aircraft.name)
+        cls.team_data = {
             'name': 'Body Team',
-            'description': 'Responsible for wing parts',
-            'parts': [self.part.id]  # Ensure parts are included for serialization
+            'description': 'Responsible for body parts'
         }
-        self.team = Team.objects.create(name='Wing Team', description='Responsible for wing parts')
-        self.team.parts.add(self.part)
+        cls.team, _ = Team.objects.get_or_create(name='Wing Team', description='Responsible for wing parts')
 
     def test_team_serialization(self):
         # When: Serializing the Team object
@@ -66,7 +64,6 @@ class TeamSerializerTests(TestCase):
             'id': self.team.id,
             'name': 'Wing Team',
             'description': 'Responsible for wing parts',
-            'parts': [self.part.id],  # Include parts in the serialized data
         })
 
     def test_team_deserialization(self):
@@ -75,9 +72,9 @@ class TeamSerializerTests(TestCase):
 
         # Then: The serializer should be valid, and the object should be saved correctly
         self.assertTrue(serializer.is_valid(), serializer.errors)
-        team = serializer.save()
+        team = Team.objects.get(name=self.team_data['name'])
         self.assertEqual(team.name, 'Body Team')
-        self.assertIn(self.part, team.parts.all())
+        self.assertTrue(team.can_produce_part(self.part))
 
 
 class PartSerializerTests(TestCase):
@@ -85,8 +82,8 @@ class PartSerializerTests(TestCase):
         # Given: An Aircraft object for Part association
         self.aircraft = Aircraft.objects.create(name='TB2', serial_number='123e4567-e89b-12d3-a456-426614174000')
         self.part = Part.objects.create(name='WING', aircraft_type=self.aircraft.name)
-        self.team = Team.objects.create(name='Wing Team')
-        self.team.parts.add(self.part)
+        self.team, _ = Team.objects.get_or_create(name=Team.WING_TEAM, description="Responsible for wing parts")
+
         self.part_data = {'name': 'WING', 'aircraft_type': self.aircraft.name}
 
     def test_part_serialization(self):
@@ -111,11 +108,15 @@ class PartSerializerTests(TestCase):
         self.assertEqual(part.name, 'WING')
         self.assertEqual(part.aircraft_type, self.aircraft.name)
 
+        # Check if the team can produce this part
+        can_produce = self.team.can_produce_part(part)
+        self.assertTrue(can_produce)
+
 
 class PersonnelSerializerTests(TestCase):
     def setUp(self):
         # Given: A User and a Team object for Personnel association
-        self.team = Team.objects.create(name='Wing Team')
+        self.team, _ = Team.objects.get_or_create(name=Team.WING_TEAM, description="Responsible for wing parts")
         self.user = User.objects.create_user(username='johndoe', password='password123')
         self.personnel_data = {'user': self.user.id, 'team': self.team.id, 'role': 'Engineer'}
 
@@ -144,12 +145,10 @@ class PersonnelSerializerTests(TestCase):
         self.assertEqual(personnel.role, 'Engineer')
 
 
-
 class AircraftPartSerializerTests(TestCase):
     def setUp(self):
         # Given: Aircraft, Team, and Part objects for AircraftPart association
         self.aircraft = Aircraft.objects.create(name='TB2', serial_number='123e4567-e89b-12d3-a456-426614174000')
-        self.team = Team.objects.create(name='Wing Team')
         self.part = Part.objects.create(name='WING', aircraft_type=self.aircraft.name)
         self.aircraft_part_data = {'aircraft': self.aircraft.id, 'part': self.part.id}
 

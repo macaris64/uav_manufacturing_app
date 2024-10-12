@@ -7,9 +7,15 @@ class AircraftSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class TeamSerializer(serializers.ModelSerializer):
+    name = serializers.ChoiceField(choices=[('Wing Team', 'Wing Team'),
+                                            ('Body Team', 'Body Team'),
+                                            ('Tail Team', 'Tail Team'),
+                                            ('Avionics Team', 'Avionics Team'),
+                                            ('Assembly Team', 'Assembly Team')])
+
     class Meta:
         model = Team
-        fields = '__all__'
+        fields = ['id', 'name', 'description']
 
 class PartSerializer(serializers.ModelSerializer):
     class Meta:
