@@ -1,9 +1,11 @@
 import React, { useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useUser } from '../UserContext';
+import UserProfile from "./UserProfile";
+import PartsTable from "./PartsTable";
 
 const Home = () => {
-    const { user, logout } = useUser();
+    const { user } = useUser();
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -14,17 +16,11 @@ const Home = () => {
 
     return (
         <div>
-            <h1>Welcome to the Home Page</h1>
-            {user ? (
-                <div>
-                    <h3>Welcome, {user.username}</h3>
-                    <button onClick={logout}>Logout</button>
-                </div>
-            ) : (
-                <div>
-                    <Link to="/login"><button>Login</button></Link>
-                    <Link to="/register"><button>Register</button></Link>
-                </div>
+            {user && (
+                <>
+                    <UserProfile user={user}/>
+                    <PartsTable />
+                </>
             )}
         </div>
     );

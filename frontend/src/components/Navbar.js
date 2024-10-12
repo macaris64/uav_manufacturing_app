@@ -3,23 +3,23 @@ import { Link } from 'react-router-dom';
 import { useUser } from '../UserContext';
 
 const Navbar = () => {
-    const { user, logout } = useUser();
+    const { user, logout } = useUser(); // Destructure user and logout from UserContext
 
     return (
         <nav style={styles.nav}>
             <div style={styles.brand}>
-                <Link to="/" style={styles.brandLink}>UAV Manufacturing</Link>
+                <Link to="/" style={styles.brandLink}>UAV Manufacturing</Link> {/* Brand link */}
             </div>
             <div style={styles.navLinks}>
                 {user ? (
                     <>
-                        <span>Welcome, {user.username}</span>
-                        <button onClick={logout} style={styles.button}>Logout</button>
+                        <span>Welcome, {user.username}</span> {/* Welcome message for logged-in users */}
+                        <button onClick={logout} style={styles.button}>Logout</button> {/* Logout button */}
                     </>
                 ) : (
                     <>
-                        <Link to="/login" style={styles.link}>Login</Link>
-                        <Link to="/register" style={styles.link}>Register</Link>
+                        <Link to="/login" style={styles.link}>Login</Link> {/* Link to login page */}
+                        <Link to="/register" style={styles.link}>Register</Link> {/* Link to register page */}
                     </>
                 )}
             </div>
@@ -27,6 +27,7 @@ const Navbar = () => {
     );
 };
 
+// Styles for the Navbar components
 const styles = {
     nav: {
         display: 'flex',

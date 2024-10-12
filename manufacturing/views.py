@@ -1,7 +1,7 @@
 from django.contrib.auth.models import User
-from django.db import IntegrityError
+from rest_framework.exceptions import ValidationError
 from rest_framework import viewsets, status
-from rest_framework.decorators import action, api_view
+from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import DjangoModelPermissionsOrAnonReadOnly, AllowAny, IsAuthenticated
 from rest_framework.response import Response
@@ -11,6 +11,7 @@ from manufacturing.models import Aircraft, Team, Part, Personnel, AircraftPart
 from manufacturing.serializers import AircraftSerializer, TeamSerializer, PartSerializer, PersonnelSerializer, \
     AircraftPartSerializer, UserSerializer
 from manufacturing.permissions import CanOnlyCreateAssignedPart, PartIsNotUsedInOtherAircraft, PartBelongsToAircraftType
+
 
 class AircraftViewSet(viewsets.ModelViewSet):
     """
@@ -67,12 +68,49 @@ class PartViewSet(viewsets.ModelViewSet):
     permission_classes = [CanOnlyCreateAssignedPart]
 
     def perform_create(self, serializer):
-        serializer.save()
+        """
+        Overridden method to handle custom part creation logic.
+        - Retrieves the user's associated team and checks if they can produce the requested part.
+        - Raises ValidationError if the team is not authorized to create the specified part.
+        """
+        user_team = self.request.user.personnel.team
+        part_name = serializer.validated_data['name']
+        if user_team.can_produce_part({'name': part_name}):
+            serializer.save()
+        else:
+            raise ValidationError("You are not authorized to produce this type of part.")
 
     def get_queryset(self):
-        # Limit parts to those that the user is allowed to see based on their teams
-        user_teams = self.request.user.team_set.all()  # Adjust based on your user model
-        return self.queryset.filter(teams__in=user_teams)
+        """
+        Retrieves the queryset of parts based on the user's team.
+        - Filters parts to only include those that the user's team can produce.
+        """
+        user_team = self.request.user.personnel.team
+        return self.queryset.filter(name__in=[
+            Part.WING if user_team.name == Team.WING_TEAM else None,
+            Part.BODY if user_team.name == Team.BODY_TEAM else None,
+            Part.TAIL if user_team.name == Team.TAIL_TEAM else None,
+            Part.AVIONICS if user_team.name == Team.AVIONICS_TEAM else None,
+        ]).exclude(name=None)
+
+    @action(detail=False, methods=['post'], url_path='bulk-delete')
+    def bulk_delete(self, request):
+        """
+        Custom action to handle bulk deletion of parts.
+        - Accepts a list of part IDs and ensures that only unused parts can be deleted.
+        - Raises ValidationError if any parts are in use.
+        """
+        part_ids = request.data.get('ids', [])
+
+        parts_to_delete = Part.objects.filter(id__in=part_ids, is_used=False)
+        used_parts = Part.objects.filter(id__in=part_ids, is_used=True)
+
+        if used_parts.exists():
+            used_names = ", ".join([part.name for part in used_parts])
+            raise ValidationError(f"Cannot delete parts in use: {used_names}")
+
+        parts_to_delete.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class PersonnelViewSet(viewsets.ModelViewSet):
@@ -93,7 +131,6 @@ class AircraftPartViewSet(viewsets.ModelViewSet):
     """
     queryset = AircraftPart.objects.all()
     serializer_class = AircraftPartSerializer
-
 
     def perform_create(self, serializer):
         """
@@ -125,17 +162,34 @@ class AircraftPartViewSet(viewsets.ModelViewSet):
 
 
 class UserView(APIView):
+    """
+    View for retrieving the current user's information.
+    Requires authentication.
+    """
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        """
+        Handles GET requests for the current user's information.
+        - Serializes the user object and returns it in the response.
+        """
         serializer = UserSerializer(request.user)
         return Response(serializer.data)
 
 
 class RegisterView(APIView):
+    """
+    View for handling user registration.
+    Allows unauthenticated users to create a new user account.
+    """
     permission_classes = [AllowAny]
 
     def post(self, request):
+        """
+        Handles POST requests for user registration.
+        - Creates a new User object and associates it with Personnel.
+        - Returns the created Personnel object or an error if the team is not found.
+        """
         username = request.data.get('username')
         password = request.data.get('password')
         team_id = request.data.get('team')

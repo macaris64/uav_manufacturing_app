@@ -1,17 +1,22 @@
-from unittest import skip
-
 from django.test import TestCase
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 from rest_framework import status
 from rest_framework.exceptions import PermissionDenied
 from manufacturing.models import Aircraft, Part, Team
-from manufacturing.views import AircraftViewSet, AircraftPartViewSet, PartViewSet
+from manufacturing.views import AircraftViewSet, AircraftPartViewSet
 
 
 class AircraftViewSetUnitTests(TestCase):
+    """
+    Unit tests for the AircraftViewSet.
+    Verifies the functionality of aircraft management.
+    """
 
     @patch('manufacturing.views.Part.objects.filter')
     def test_check_parts_missing(self, mock_filter):
+        """
+        Test to ensure the API correctly identifies missing parts for an aircraft.
+        """
         # Given: a mock aircraft and required parts
         view = AircraftViewSet()
         view.get_object = Mock(return_value=Mock())
@@ -26,6 +31,9 @@ class AircraftViewSetUnitTests(TestCase):
 
     @patch('manufacturing.views.Part.objects.filter')
     def test_check_parts_no_parts_available(self, mock_filter):
+        """
+        Test to ensure the API returns a response indicating all parts are missing.
+        """
         # Given: no parts are available for the aircraft
         view = AircraftViewSet()
         view.get_object = Mock(return_value=Mock())
@@ -40,6 +48,9 @@ class AircraftViewSetUnitTests(TestCase):
 
     @patch('manufacturing.views.Part.objects.filter')
     def test_check_parts_available(self, mock_filter):
+        """
+        Test to ensure the API confirms all required parts are present for an aircraft.
+        """
         # Given: all parts are available for the aircraft
         view = AircraftViewSet()
         view.get_object = Mock(return_value=Mock())
@@ -54,10 +65,17 @@ class AircraftViewSetUnitTests(TestCase):
 
 
 class AircraftPartViewSetUnitTests(TestCase):
+    """
+    Unit tests for the AircraftPartViewSet.
+    Verifies the functionality of managing AircraftPart associations.
+    """
 
     @patch('manufacturing.permissions.PartBelongsToAircraftType.has_permission', return_value=True)
     @patch('manufacturing.permissions.PartIsNotUsedInOtherAircraft.has_permission', return_value=False)
     def test_perform_create_part_already_used(self, mock_part_is_not_used, mock_part_belongs):
+        """
+        Test to ensure the API prevents re-assigning a part already in use to another aircraft.
+        """
         # Given: a view instance with mock serializer and request
         view = AircraftPartViewSet()
         view.request = Mock()
@@ -83,8 +101,10 @@ class AircraftPartViewSetUnitTests(TestCase):
     @patch('manufacturing.permissions.PartBelongsToAircraftType.has_permission', return_value=False)
     @patch('manufacturing.permissions.PartIsNotUsedInOtherAircraft.has_permission', return_value=True)
     @patch('manufacturing.views.AircraftPart.objects.filter')
-    def test_perform_create_part_belongs_to_another_aircraft(self, mock_filter, mock_part_is_not_used,
-                                                             mock_part_belongs):
+    def test_perform_create_part_belongs_to_another_aircraft(self, mock_filter, mock_part_is_not_used, mock_part_belongs):
+        """
+        Test to ensure the API prevents using a part that does not belong to the specified aircraft.
+        """
         # Given: a view instance where the part belongs to another aircraft
         view = AircraftPartViewSet()
         view.request = Mock()
@@ -108,6 +128,9 @@ class AircraftPartViewSetUnitTests(TestCase):
     @patch('manufacturing.permissions.PartIsNotUsedInOtherAircraft.has_permission', return_value=True)
     @patch('manufacturing.views.AircraftPart.objects.filter')
     def test_perform_create_success(self, mock_filter, mock_part_is_not_used, mock_part_belongs):
+        """
+        Test to ensure the API allows creating an AircraftPart association successfully.
+        """
         # Given: a view instance where the part is not used in any other aircraft
         view = AircraftPartViewSet()
         view.request = Mock()
@@ -134,27 +157,35 @@ class AircraftPartViewSetUnitTests(TestCase):
         serializer.save.assert_called_once()
 
     def test_create_part_with_team_association(self):
+        """
+        Test to ensure a Part can be created with the correct team association.
+        """
         # Given: An Aircraft and a Team
         aircraft = Aircraft.objects.create(name='TB2', serial_number='123e4567-e89b-12d3-a456-426614174000')
         team, _ = Team.objects.get_or_create(name=Team.WING_TEAM, description="Responsible for wing parts")
 
         # When: Creating a new Part
         part = Part.objects.create(name='WING', aircraft_type=aircraft.name)
+        part_dict = {'name': part.name}
 
         # Check if the team can produce the part
-        can_produce = team.can_produce_part(part)
+        can_produce = team.can_produce_part(part_dict)
 
         # Then: The team should be able to produce the assigned part
         self.assertTrue(can_produce)
 
     def test_cannot_assign_part_to_non_responsible_team(self):
+        """
+        Test to ensure that a Team cannot assign a part it is not responsible for.
+        """
         # Given: An Aircraft and a non-responsible Team
         aircraft = Aircraft.objects.create(name='TB2', serial_number='123e4567-e89b-12d3-a456-426614174001')
         avionic_team = Team.objects.create(name='Avionic Team', description='Responsible for avionic parts')
         wing_part = Part.objects.create(name='WING', aircraft_type=aircraft.name)
+        wing_part_dict = {'name': wing_part.name}
 
         # When: Checking if the avionic team can produce a wing part
-        can_assign = avionic_team.can_produce_part(wing_part)
+        can_assign = avionic_team.can_produce_part(wing_part_dict)
 
         # Then: The team should not be able to assign the wing part
         self.assertFalse(can_assign)

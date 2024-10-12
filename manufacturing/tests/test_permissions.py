@@ -1,5 +1,5 @@
 from django.core.exceptions import ValidationError
-from django.db import transaction, IntegrityError
+from django.db import transaction
 from django.test import TestCase, TransactionTestCase
 from unittest.mock import Mock
 from manufacturing.permissions import CanOnlyCreateAssignedPart, PartIsNotUsedInOtherAircraft, PartBelongsToAircraftType
@@ -7,6 +7,11 @@ from manufacturing.models import Aircraft, Part, Team, AircraftPart
 
 
 class CanOnlyCreateAssignedPartTests(TestCase):
+    """
+    Tests for the CanOnlyCreateAssignedPart permission class.
+    Verifies if teams can create parts they are authorized for.
+    """
+
     def setUp(self):
         # Given: Setup mock data and initialize permission class
         self.permission = CanOnlyCreateAssignedPart()
@@ -14,6 +19,9 @@ class CanOnlyCreateAssignedPartTests(TestCase):
         self.team, _ = Team.objects.get_or_create(name='Wing Team')
 
     def test_team_can_create_assigned_part(self):
+        """
+        Test that a team can create a part it is authorized to create.
+        """
         # Given: A request with a part that the team is authorized to create
         request = Mock()
         request.data = {'name': 'WING', 'team': self.team.id}
@@ -26,6 +34,9 @@ class CanOnlyCreateAssignedPartTests(TestCase):
         self.assertTrue(result)
 
     def test_team_cannot_create_unassigned_part(self):
+        """
+        Test that a team cannot create a part it is not authorized to create.
+        """
         # Given: A request with a part that the team is not authorized to create
         request = Mock()
         request.data = {'name': 'BODY', 'team': self.team.id}
@@ -39,15 +50,23 @@ class CanOnlyCreateAssignedPartTests(TestCase):
 
 
 class PartIsNotUsedInOtherAircraftTests(TransactionTestCase):
+    """
+    Tests for the PartIsNotUsedInOtherAircraft permission class.
+    Verifies if parts can be reused across different aircraft.
+    """
+
     def setUp(self):
         # Given: Initialize permission class and setup test data
         self.permission = PartIsNotUsedInOtherAircraft()
         self.aircraft = Aircraft.objects.create(name="TB2", serial_number='123e4567-e89b-12d3-a456-426614174000')
-        self.team, _ = Team.objects.get_or_create(name='Wing Team')  # Changed to get_or_create
+        self.team, _ = Team.objects.get_or_create(name='Wing Team')
         self.part = Part.objects.create(name='WING', aircraft_type=self.aircraft.name)
         self.aircraft_part = AircraftPart.objects.create(aircraft=self.aircraft, part=self.part)
 
     def test_part_is_not_used_in_another_aircraft(self):
+        """
+        Test that a new part can be created if it is not used in any other aircraft.
+        """
         # Given: A new part that is not used in any other aircraft
         new_part = Part.objects.create(name='BODY', aircraft_type=self.aircraft.name)
         request = Mock()
@@ -61,6 +80,9 @@ class PartIsNotUsedInOtherAircraftTests(TransactionTestCase):
         self.assertTrue(result)
 
     def test_part_already_used_in_another_aircraft(self):
+        """
+        Test that a part already in use cannot be reused in another aircraft.
+        """
         # Given: A part already used in another aircraft
         new_aircraft = Aircraft.objects.create(name='TB3')
 
@@ -84,14 +106,22 @@ class PartIsNotUsedInOtherAircraftTests(TransactionTestCase):
 
 
 class PartBelongsToAircraftTypeTests(TestCase):
+    """
+    Tests for the PartBelongsToAircraftType permission class.
+    Verifies if parts belong to the correct aircraft type.
+    """
+
     def setUp(self):
         # Given: Initialize permission class and create necessary mock data
         self.permission = PartBelongsToAircraftType()
         self.aircraft = Aircraft.objects.create(name="TB2", serial_number='123e4567-e89b-12d3-a456-426614174000')
-        self.team, _ = Team.objects.get_or_create(name='Wing Team')  # Changed to get_or_create
+        self.team, _ = Team.objects.get_or_create(name='Wing Team')
         self.part = Part.objects.create(name='WING', aircraft_type=self.aircraft.name)
 
     def test_part_belongs_to_correct_aircraft(self):
+        """
+        Test that a part belongs to the correct aircraft type.
+        """
         # Given: A request with a part that belongs to the correct aircraft type
         request = Mock()
         request.data = {'part': self.part.id, 'aircraft': self.aircraft.id}
@@ -104,6 +134,9 @@ class PartBelongsToAircraftTypeTests(TestCase):
         self.assertTrue(result)
 
     def test_part_does_not_belong_to_aircraft_type(self):
+        """
+        Test that a part does not belong to a different aircraft type.
+        """
         # Given: A request with a part that does not belong to the specified aircraft type
         new_aircraft = Aircraft.objects.create(name='TB3')
         request = Mock()

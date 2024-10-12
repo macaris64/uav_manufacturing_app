@@ -11,6 +11,10 @@ class ManufacturingTestSetup(APITestCase):
     """
 
     def setUp(self):
+        """
+        Given: Setup method to create common objects required for tests.
+        Creates a User, Token, Aircraft, Teams, Personnel, and Parts.
+        """
         # Create User and Get Token for authentication
         self.user = User.objects.create_user(username='testuser', password='password')
         self.token, created = Token.objects.get_or_create(user=self.user)

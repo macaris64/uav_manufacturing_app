@@ -1,5 +1,3 @@
-from unittest import skip
-
 from rest_framework import status
 from django.urls import reverse
 from manufacturing.models import AircraftPart, Part, Aircraft
@@ -7,6 +5,10 @@ from manufacturing.tests.setup_test import ManufacturingTestSetup
 
 
 class AircraftViewSetIntegrationTests(ManufacturingTestSetup):
+    """
+    Integration tests for the AircraftViewSet.
+    Verifies the API functionality for aircraft management.
+    """
 
     def test_check_parts_missing(self):
         """
@@ -164,6 +166,10 @@ class AircraftViewSetIntegrationTests(ManufacturingTestSetup):
 
 
 class AircraftPartViewSetIntegrationTests(ManufacturingTestSetup):
+    """
+    Integration tests for the AircraftPartViewSet.
+    Verifies the API functionality for managing AircraftPart associations.
+    """
 
     def test_create_aircraft_part_success(self):
         """

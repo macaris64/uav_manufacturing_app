@@ -1,21 +1,22 @@
-from unittest import skip
-
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.test import TestCase
 from manufacturing.models import Aircraft, Team, Part, AircraftPart, Personnel
-from manufacturing.tests.setup_test import ManufacturingTestSetup
 
 
 class AircraftPartModelTests(TestCase):
     """
-    Tests specifically for the AircraftPart model, ensuring parts are assigned only to one aircraft and managed correctly.
+    Tests specifically for the AircraftPart model,
+    ensuring parts are assigned only to one aircraft and managed correctly.
     """
 
     @classmethod
     def setUpTestData(cls):
-        # Predefined team names and descriptions
+        """
+        Given: Predefined team names and descriptions.
+        When: Creating teams if they do not already exist.
+        """
         teams_data = [
             ('Wing Team', 'Responsible for wing parts'),
             ('Body Team', 'Responsible for body parts'),
@@ -24,20 +25,24 @@ class AircraftPartModelTests(TestCase):
             ('Assembly Team', 'Only assembles parts'),
         ]
 
-        # Avoid duplicates by checking for existence before creating
         for name, description in teams_data:
             if not Team.objects.filter(name=name).exists():
                 Team.objects.create(name=name, description=description)
 
     def setUp(self):
-        # Set up for each test
+        """
+        Given: Setup for each test that initializes an Aircraft and Parts.
+        """
         self.aircraft = Aircraft.objects.create(name="TB2", serial_number='123e4567-e89b-12d3-a456-426614174000')
         self.wing_part = Part.objects.create(name='WING', aircraft_type='TB2')
         self.body_part = Part.objects.create(name='BODY', aircraft_type='TB2')
 
     def test_create_aircraft_part_association(self):
+        """
+        Test creating an association between Aircraft and Part as AircraftPart.
+        """
         # Given: An Aircraft and a Part
-        # When: Creating an association between Aircraft and Part as AircraftPart
+        # When: Creating an association
         aircraft_part = AircraftPart.objects.create(aircraft=self.aircraft, part=self.wing_part)
 
         # Then: The association should be created successfully
@@ -46,6 +51,9 @@ class AircraftPartModelTests(TestCase):
         self.assertEqual(AircraftPart.objects.count(), 1)
 
     def test_part_cannot_be_reassigned_to_another_aircraft(self):
+        """
+        Test that a Part cannot be reassigned to a different Aircraft.
+        """
         # Given: An AircraftPart associated with the current Aircraft and Part
         AircraftPart.objects.create(aircraft=self.aircraft, part=self.wing_part)
         new_aircraft = Aircraft.objects.create(name='TB3', serial_number='123e4567-e89b-12d3-a456-426614174002')
@@ -53,18 +61,20 @@ class AircraftPartModelTests(TestCase):
         # When: Attempting to assign the same Part to a different Aircraft
         aircraft_part = AircraftPart(aircraft=new_aircraft, part=self.wing_part)
 
-        # Then: A ValidationError should be raised due to the uniqueness constraint in clean()
+        # Then: A ValidationError should be raised
         with self.assertRaises(ValidationError):
             aircraft_part.clean()
             aircraft_part.save()
 
-        # Confirm only one AircraftPart exists
         self.assertEqual(AircraftPart.objects.count(), 1)
 
     def test_unique_part_per_aircraft(self):
-        # Given: An Aircraft and a Part associated with it
+        """
+        Test that parts with the same name can be created for different aircraft types.
+        """
+        # Given: Two Aircrafts of different types
         aircraft1 = Aircraft.objects.create(name='TB2', serial_number='123e4567-e89b-12d3-a456-426614174001')
-        part = Part.objects.create(name='WING', aircraft_type='TB2')
+        part = Part.objects.create(name='WING', aircraft_type=self.aircraft.name)
 
         # When: Creating an AircraftPart association
         AircraftPart.objects.create(aircraft=aircraft1, part=part)
@@ -76,6 +86,9 @@ class AircraftPartModelTests(TestCase):
             aircraft_part.clean()
 
     def test_part_type_constraint(self):
+        """
+        Test that different part types can be added to the same aircraft.
+        """
         # Given: An Aircraft and a Part of a different type associated with it
         AircraftPart.objects.create(aircraft=self.aircraft, part=self.wing_part)
 
@@ -88,6 +101,9 @@ class AircraftPartModelTests(TestCase):
         self.assertEqual(AircraftPart.objects.filter(aircraft=self.aircraft).count(), 2)
 
     def test_is_used_set_to_true_when_part_assigned(self):
+        """
+        Test that the part's is_used field is set to True when assigned to an Aircraft.
+        """
         # Given: A new Part and Aircraft
         aircraft = Aircraft.objects.create(name='TB2', serial_number='123e4567-e89b-12d3-a456-426614174003')
         part = Part.objects.create(name='WING', aircraft_type=aircraft.name)
@@ -107,8 +123,11 @@ class AircraftModelTests(TestCase):
 
     @classmethod
     def setUpTestData(cls):
+        """
+        Given: Predefined team names and descriptions.
+        When: Creating teams if they do not already exist.
+        """
         Team.objects.all().delete()
-        # Predefined team names and descriptions
         teams_data = [
             ('Wing Team', 'Responsible for wing parts'),
             ('Body Team', 'Responsible for body parts'),
@@ -117,14 +136,15 @@ class AircraftModelTests(TestCase):
             ('Assembly Team', 'Only assembles parts'),
         ]
 
-        # Avoid duplicates by checking for existence before creating
         for name, description in teams_data:
             Team.objects.get_or_create(name=name, description=description)
 
-        # Create a default aircraft for testing
         cls.aircraft = Aircraft.objects.create(name='TB2', serial_number='123e4567-e89b-12d3-a456-426614174000')
 
     def test_create_aircraft(self):
+        """
+        Test creating a new Aircraft with a unique name.
+        """
         # Given: No additional Aircraft
         # When: Creating a new Aircraft with a unique name
         new_aircraft = Aircraft.objects.create(name='TB3', serial_number='123e4567-e89b-12d3-a456-426614174001')
@@ -134,6 +154,9 @@ class AircraftModelTests(TestCase):
         self.assertEqual(Aircraft.objects.count(), 2)  # Including the one created in setUpTestData
 
     def test_update_aircraft(self):
+        """
+        Test updating the name of an existing Aircraft.
+        """
         # Given: An existing Aircraft
         # When: Updating the Aircraft name
         self.aircraft.name = 'Updated TB2'
@@ -144,7 +167,9 @@ class AircraftModelTests(TestCase):
         self.assertEqual(updated_aircraft.name, 'Updated TB2')
 
     def test_aircraft_is_produced_when_all_parts_are_added(self):
-        """Test that an aircraft is marked as produced when all required parts are added."""
+        """
+        Test that an aircraft is marked as produced when all required parts are added.
+        """
         # Given: An aircraft and all required parts
         aircraft = Aircraft.objects.create(name='TB2', serial_number='123e4567-e89b-12d3-a456-426614174003')
         parts = [
@@ -159,11 +184,13 @@ class AircraftModelTests(TestCase):
             AircraftPart.objects.create(aircraft=aircraft, part=part)
 
         # Then: The aircraft should be marked as produced
-        aircraft.refresh_from_db()  # Refresh the aircraft object from the database
+        aircraft.refresh_from_db()
         self.assertTrue(aircraft.is_produced)
 
     def test_aircraft_not_produced_with_missing_parts(self):
-        """Test that an aircraft is not marked as produced when some parts are missing."""
+        """
+        Test that an aircraft is not marked as produced when some parts are missing.
+        """
         # Given: An aircraft and some of the required parts (missing one)
         aircraft = Aircraft.objects.create(name='TB2', serial_number='123e4567-e89b-12d3-a456-426614174004')
         parts = [
@@ -189,10 +216,11 @@ class TeamModelTests(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        # Önceden tanımlanmış takımları sil
+        """
+        Given: Predefined team names and descriptions.
+        When: Creating teams if they do not already exist.
+        """
         Team.objects.all().delete()
-
-        # Predefined team names and descriptions
         teams_data = [
             ('Wing Team', 'Responsible for wing parts'),
             ('Body Team', 'Responsible for body parts'),
@@ -201,15 +229,16 @@ class TeamModelTests(TestCase):
             ('Assembly Team', 'Only assembles parts'),
         ]
 
-        # Create the teams without duplicating
         for name, description in teams_data:
             Team.objects.get_or_create(name=name, description=description)
 
-        # Default aircraft for tests
         cls.aircraft = Aircraft.objects.create(name='TB2', serial_number='123e4567-e89b-12d3-a456-426614174000')
         cls.wing_team = Team.objects.get(name='Wing Team')
 
     def test_create_team(self):
+        """
+        Test creating a new Team with a unique name.
+        """
         # Given: No additional Team with a unique name
         unique_team_name = 'New Unique Team'
 
@@ -218,61 +247,78 @@ class TeamModelTests(TestCase):
 
         # Then: The Team should be created successfully and counted correctly
         self.assertEqual(new_team.name, unique_team_name)
-        # Ön tanımlı takımlarla birlikte toplam takım sayısı
         self.assertEqual(Team.objects.count(), 6)
 
     def test_unique_team_name(self):
+        """
+        Test that creating a team with a duplicate name raises an IntegrityError.
+        """
         # Given: An existing Team with a specific name
         # When: Attempting to create another Team with the same name
-        # Then: An IntegrityError should be raised due to the unique constraint
         with self.assertRaises(IntegrityError):
             with transaction.atomic():
                 Team.objects.create(name='Wing Team')
 
     def test_assign_part_to_team(self):
-        """Test that a team can produce the part it is responsible for."""
+        """
+        Test that a team can produce the part it is responsible for.
+        """
         # Given: An Aircraft and a Team responsible for a specific part
         wing_part = Part.objects.create(name=Part.WING, aircraft_type=self.aircraft.name)
+        wing_part_dict = {'name': wing_part.name}
 
         # When: Checking if the team can produce the part it is responsible for
-        can_produce = self.wing_team.can_produce_part(wing_part)
+        can_produce = self.wing_team.can_produce_part(wing_part_dict)
 
         # Then: The team should be able to produce the part
         self.assertTrue(can_produce)
 
     def test_team_can_produce_assigned_part(self):
-        """Test that a team can produce the part it is responsible for."""
+        """
+        Test that a team can produce the part it is responsible for.
+        """
         avionics_team = Team.objects.get(name='Avionics Team')
         avionics_part = Part.objects.create(name=Part.AVIONICS, aircraft_type=self.aircraft.name)
+        avionics_part_dict = {'name': avionics_part.name}
 
         # When: Checking if the team can produce the part
-        can_produce = avionics_team.can_produce_part(avionics_part)
+        can_produce = avionics_team.can_produce_part(avionics_part_dict)
 
         # Then: The team should be able to produce the part
         self.assertTrue(can_produce)
 
     def test_cannot_assign_part_to_non_responsible_team(self):
-        """Test that a team cannot produce parts it is not responsible for."""
+        """
+        Test that a team cannot produce parts it is not responsible for.
+        """
         avionic_team = Team.objects.get(name='Avionics Team')
         wing_part = Part.objects.create(name=Part.WING, aircraft_type=self.aircraft.name)
+        wing_part_dict = {'name': wing_part.name}
 
         # When: Checking if the Avionic Team can produce a Wing Part
-        can_produce = avionic_team.can_produce_part(wing_part)
+        can_produce = avionic_team.can_produce_part(wing_part_dict)
 
         # Then: The Avionic Team should not be able to produce the Wing Part
         self.assertFalse(can_produce)
 
     def test_team_produce_part_responsibility(self):
-        """Test that a team can produce only the part it is responsible for."""
+        """
+        Test that a team can produce only the part it is responsible for.
+        """
         tail_team = Team.objects.get(name='Tail Team')
         tail_part = Part.objects.create(name=Part.TAIL, aircraft_type=self.aircraft.name)
         avionics_part = Part.objects.create(name=Part.AVIONICS, aircraft_type=self.aircraft.name)
+        tail_part_dict = {'name': tail_part.name}
+        avionics_part_dict = {'name': avionics_part.name}
 
         # Then: Tail team should be able to produce tail parts, but not avionics parts
-        self.assertTrue(tail_team.can_produce_part(tail_part))
-        self.assertFalse(tail_team.can_produce_part(avionics_part))
+        self.assertTrue(tail_team.can_produce_part(tail_part_dict))
+        self.assertFalse(tail_team.can_produce_part(avionics_part_dict))
 
     def test_team_description(self):
+        """
+        Test that a newly created Team's description is set correctly.
+        """
         # Given: A newly created Team with a description
         new_team = Team.objects.create(name='New Team', description='This is a new team')
 
@@ -280,12 +326,15 @@ class TeamModelTests(TestCase):
         self.assertEqual(new_team.description, 'This is a new team')
 
     def test_team_cannot_produce_non_assigned_part(self):
-        """Test that a team cannot produce a part it is not responsible for."""
+        """
+        Test that a team cannot produce a part it is not responsible for.
+        """
         avionics_team = Team.objects.get(name='Avionics Team')
         wing_part = Part.objects.create(name=Part.WING, aircraft_type=self.aircraft.name)
+        wing_part_dict = {'name': wing_part.name}
 
         # When: Checking if the team can produce a part it should not be able to
-        can_produce = avionics_team.can_produce_part(wing_part)
+        can_produce = avionics_team.can_produce_part(wing_part_dict)
 
         # Then: The team should not be able to produce the part
         self.assertFalse(can_produce)
@@ -298,7 +347,10 @@ class PartModelTests(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        # Predefined team names and descriptions
+        """
+        Given: Predefined team names and descriptions.
+        When: Creating teams if they do not already exist.
+        """
         teams_data = [
             ('Wing Team', 'Responsible for wing parts'),
             ('Body Team', 'Responsible for body parts'),
@@ -307,21 +359,20 @@ class PartModelTests(TestCase):
             ('Assembly Team', 'Only assembles parts'),
         ]
 
-        # Avoid duplicates by checking for existence before creating
         cls.teams = {}
         for name, description in teams_data:
             try:
                 team, _ = Team.objects.get_or_create(name=name, description=description)
                 cls.teams[name] = team
             except IntegrityError:
-                # If the team already exists, fetch it
                 cls.teams[name] = Team.objects.get(name=name)
 
-        # Create a default aircraft for testing
         cls.aircraft = Aircraft.objects.create(name='TB2')
 
     def test_create_part(self):
-        """Test creating a Part associated with an Aircraft type."""
+        """
+        Test creating a Part associated with an Aircraft type.
+        """
         # Given: An Aircraft
         aircraft = Aircraft.objects.create(name='TB2', serial_number='123e4567-e89b-12d3-a456-426614174001')
 
@@ -334,7 +385,9 @@ class PartModelTests(TestCase):
         self.assertEqual(Part.objects.count(), 1)
 
     def test_part_unique_per_aircraft(self):
-        """Test that parts with the same name can be created for different aircraft types."""
+        """
+        Test that parts with the same name can be created for different aircraft types.
+        """
         # Given: Two Aircrafts of different types
         aircraft_tb3 = Aircraft.objects.create(name='TB3')
         Part.objects.create(name='WING', aircraft_type=self.aircraft.name)
@@ -346,59 +399,61 @@ class PartModelTests(TestCase):
         self.assertEqual(Part.objects.count(), 2)
         self.assertEqual(new_part.aircraft_type, 'TB3')
 
-    def test_create_part_with_team_association(self):
-        """Test that a team can produce its assigned part."""
-        # Given: An Avionics Team and a corresponding Part
-        avionic_part = Part.objects.create(name=Part.AVIONICS, aircraft_type=self.aircraft.name)
-
-        # When: Checking if the Avionics Team can produce the Avionic Part
-        can_produce = self.teams['Avionics Team'].can_produce_part(avionic_part)
-
-        # Then: The Avionics Team should be able to produce the Avionic Part
-        self.assertTrue(can_produce)
-
     def test_part_can_be_produced_by_multiple_teams(self):
-        """Test that a Part type can be associated with multiple responsible Teams based on the team type."""
+        """
+        Test that a Part type can be associated with multiple responsible Teams based on the team type.
+        """
         # Given: Corresponding Parts for each team type
         tail_part = Part.objects.create(name=Part.TAIL, aircraft_type=self.aircraft.name)
         avionics_part = Part.objects.create(name=Part.AVIONICS, aircraft_type=self.aircraft.name)
+        tail_part_dict = {'name': tail_part.name}
+        avionics_part_dict = {'name': avionics_part.name}
 
         # When: Checking if each team can produce its respective part
-        can_tail_team_produce = self.teams['Tail Team'].can_produce_part(tail_part)
-        can_avionics_team_produce = self.teams['Avionics Team'].can_produce_part(avionics_part)
+        can_tail_team_produce = self.teams['Tail Team'].can_produce_part(tail_part_dict)
+        can_avionics_team_produce = self.teams['Avionics Team'].can_produce_part(avionics_part_dict)
 
         # Then: Each team should be able to produce its responsible part
         self.assertTrue(can_tail_team_produce)
         self.assertTrue(can_avionics_team_produce)
 
         # And: They should not produce parts outside of their responsibility
-        self.assertFalse(self.teams['Tail Team'].can_produce_part(avionics_part))
-        self.assertFalse(self.teams['Avionics Team'].can_produce_part(tail_part))
+        self.assertFalse(self.teams['Tail Team'].can_produce_part(avionics_part_dict))
+        self.assertFalse(self.teams['Avionics Team'].can_produce_part(tail_part_dict))
 
     def test_part_assignment_limited_to_responsible_team(self):
-        """Test that a team can only produce parts it is responsible for."""
+        """
+        Test that a team can only produce parts it is responsible for.
+        """
         # Given: A Tail Part
         tail_part = Part.objects.create(name=Part.TAIL, aircraft_type=self.aircraft.name)
+        part_dict = {'name': tail_part.name}
 
         # When: Checking if the Avionics Team can produce a Tail Part
-        can_produce = self.teams['Avionics Team'].can_produce_part(tail_part)
+        can_produce = self.teams['Avionics Team'].can_produce_part(part_dict)
 
         # Then: The team should not be able to produce the part
         self.assertFalse(can_produce)
 
     def test_assign_responsible_part_to_team(self):
-        """Test that a Team can produce and assign a compatible Part."""
+        """
+        Test that a Team can produce and assign a compatible Part.
+        """
         # Given: A Part the Avionics Team is responsible for
         part = Part.objects.create(name=Part.AVIONICS, aircraft_type=self.aircraft.name)
+        part_dict = {'name': part.name}
 
         # When: Checking if the Avionics Team can produce the Avionic Part
-        can_produce = self.teams['Avionics Team'].can_produce_part(part)
+        can_produce = self.teams['Avionics Team'].can_produce_part(part_dict)
 
         # Then: The team should be able to produce the part
         self.assertTrue(can_produce)
+        self.assertTrue(Part.objects.filter(name=Part.AVIONICS, aircraft_type=self.aircraft.name).exists())
 
     def test_aircraft_part_incompatible_assignment(self):
-        """Test that a Part cannot be assigned to an incompatible Aircraft type."""
+        """
+        Test that a Part cannot be assigned to an incompatible Aircraft type.
+        """
         # Given: A Part created for TB2 and an Aircraft of type AKINCI
         part_tb2 = Part.objects.create(name=Part.WING, aircraft_type='TB2')
         aircraft_akinci = Aircraft.objects.create(name='AKINCI')
@@ -409,7 +464,9 @@ class PartModelTests(TestCase):
             aircraft_part.clean()
 
     def test_aircraft_part_compatible_assignment(self):
-        """Test that a compatible Part can be assigned to an Aircraft."""
+        """
+        Test that a compatible Part can be assigned to an Aircraft.
+        """
         # Given: A Part compatible with TB2 and an Aircraft of type TB2
         part_tb2 = Part.objects.create(name=Part.WING, aircraft_type=self.aircraft.name)
         aircraft_tb2 = Aircraft.objects.create(name='TB2')
@@ -422,7 +479,9 @@ class PartModelTests(TestCase):
         self.assertEqual(aircraft_part.part, part_tb2)
 
     def test_different_aircraft_types_for_multiple_parts(self):
-        """Test that multiple parts with different aircraft types can be created."""
+        """
+        Test that multiple parts with different aircraft types can be created.
+        """
         # Given: Multiple Parts for different aircraft types
         part_tb2 = Part.objects.create(name=Part.AVIONICS, aircraft_type=self.aircraft.name)
         part_akinci = Part.objects.create(name=Part.BODY, aircraft_type='AKINCI')
@@ -440,7 +499,10 @@ class PersonnelModelTests(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        # Predefined team names and descriptions
+        """
+        Given: Predefined team names and descriptions.
+        When: Creating teams if they do not already exist.
+        """
         teams_data = [
             ('Wing Team', 'Responsible for wing parts'),
             ('Body Team', 'Responsible for body parts'),
@@ -450,15 +512,12 @@ class PersonnelModelTests(TestCase):
         ]
 
         cls.teams = {}
-
-        # Check if each team exists, if not, create it
         for name, description in teams_data:
             team = Team.objects.filter(name=name).first()
             if not team:
                 team = Team.objects.create(name=name, description=description)
             cls.teams[name] = team
 
-        # Retrieve the specific teams if they were not created in this test setup
         cls.wing_team = cls.teams['Wing Team']
         cls.body_team = cls.teams['Body Team']
 
@@ -468,6 +527,9 @@ class PersonnelModelTests(TestCase):
         cls.personnel = Personnel.objects.create(user=user, team=cls.body_team, role='Technician')
 
     def test_create_personnel(self):
+        """
+        Test creating a new Personnel associated with a Team.
+        """
         # Given: An existing team from setUp
         team = self.body_team
 
@@ -481,6 +543,9 @@ class PersonnelModelTests(TestCase):
         self.assertEqual(Personnel.objects.count(), 2)  # Including the one created in setUp
 
     def test_personnel_update_role(self):
+        """
+        Test updating the role of an existing Personnel.
+        """
         # Given: An existing Personnel
         # When: Updating the role of the Personnel
         self.personnel.role = 'Senior Engineer'
@@ -491,22 +556,34 @@ class PersonnelModelTests(TestCase):
         self.assertEqual(updated_personnel.role, 'Senior Engineer')
 
     def test_is_superuser_property(self):
-        # Given: A superuser User and a regular User, ensuring no duplicate Personnel for each User
-        superuser = User.objects.create_user(username='adminuser', password='password123')
-        superuser.is_superuser = True
-        superuser.save()
+        """
+        Test that the is_superuser property reflects the user's superuser status.
+        """
+        # Given: A superuser User and a regular User
+        superuser, _ = User.objects.get_or_create(username='adminuser',
+                                                  defaults={'password': 'password123', 'is_superuser': True})
+        regular_user, _ = User.objects.get_or_create(username='regularuser', defaults={'password': 'password123'})
 
-        regular_user = User.objects.create_user(username='regularuser', password='password123')
+        # Create Personnel for both users if they don't exist
+        if not Personnel.objects.filter(user=superuser).exists():
+            superuser_personnel = Personnel.objects.create(user=superuser, team=self.body_team, role='Admin')
+        else:
+            superuser_personnel = Personnel.objects.get(user=superuser)
 
-        # When: Creating Personnel for both users
-        superuser_personnel, _ = Personnel.objects.get_or_create(user=superuser, team=self.body_team, role='Admin')
-        regular_personnel, _ = Personnel.objects.get_or_create(user=regular_user, team=self.teams['Wing Team'], role='Technician')
+        if not Personnel.objects.filter(user=regular_user).exists():
+            regular_personnel = Personnel.objects.create(user=regular_user, team=self.teams['Wing Team'],
+                                                         role='Technician')
+        else:
+            regular_personnel = Personnel.objects.get(user=regular_user)
 
         # Then: superuser_personnel should have is_superuser True, regular_personnel should have it False
         self.assertTrue(superuser_personnel.is_superuser)
         self.assertFalse(regular_personnel.is_superuser)
 
     def test_update_team(self):
+        """
+        Test updating the team of an existing Personnel.
+        """
         # Given: An existing Personnel with a team
         new_team, _ = Team.objects.get_or_create(name='New Team')
 
@@ -519,6 +596,9 @@ class PersonnelModelTests(TestCase):
         self.assertEqual(updated_personnel.team, new_team)
 
     def test_delete_user_also_deletes_personnel(self):
+        """
+        Test that deleting a User also deletes the linked Personnel.
+        """
         # Given: A Personnel linked to a User
         user = User.objects.create_user(username='deletetestuser', password='password123')
         personnel = Personnel.objects.create(user=user, team=self.body_team, role='Test Role')

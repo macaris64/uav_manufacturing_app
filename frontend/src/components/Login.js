@@ -6,6 +6,7 @@ const Login = () => {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
 
+    // Handles the login process
     const handleLogin = (e) => {
         e.preventDefault();
         login(username, password);

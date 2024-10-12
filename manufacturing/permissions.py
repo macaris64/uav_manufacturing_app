@@ -8,10 +8,13 @@ class CanOnlyCreateAssignedPart(BasePermission):
     """
 
     def has_permission(self, request, view):
+        """
+        Determines if the user has permission to create a part based on the team and part type.
+        """
         # Only applies to the 'create' action
         if view.action == 'create':
-            part_type = request.data.get('name')
-            team_id = request.data.get('team')
+            part_type = request.data.get('name')  # Retrieve the part type from the request data
+            team_id = request.data.get('team')  # Retrieve the team ID from the request data
 
             # Define part types allowed for each team
             allowed_parts = {
@@ -35,9 +38,12 @@ class PartIsNotUsedInOtherAircraft(BasePermission):
     """
 
     def has_permission(self, request, view):
+        """
+        Checks if a part is already used in any aircraft to determine permission for creating an AircraftPart.
+        """
         # Only applies to the 'create' action
         if view.action == 'create':
-            part_id = request.data.get('part')
+            part_id = request.data.get('part')  # Retrieve the part ID from the request data
             # Check if the part already has an association with any aircraft
             return not AircraftPart.objects.filter(part_id=part_id).exists()  # True if unused, False if used
         return True  # Permission granted if not a 'create' action
@@ -49,16 +55,19 @@ class PartBelongsToAircraftType(BasePermission):
     """
 
     def has_permission(self, request, view):
+        """
+        Verifies that the part's aircraft type matches the specified aircraft type in the request.
+        """
         # Only applies to the 'create' action
         if view.action == 'create':
-            part_id = request.data.get('part')
-            aircraft_id = request.data.get('aircraft')
+            part_id = request.data.get('part')  # Retrieve the part ID from the request data
+            aircraft_id = request.data.get('aircraft')  # Retrieve the aircraft ID from the request data
 
             # Retrieve the part based on part_id
-            part = Part.objects.filter(id=part_id).first()
-            aircraft = Aircraft.objects.filter(id=aircraft_id).first()
+            part = Part.objects.filter(id=part_id).first()  # Get the part by ID
+            aircraft = Aircraft.objects.filter(id=aircraft_id).first()  # Get the aircraft by ID
 
             # Deny permission if the part's aircraft type does not match the requested aircraft
             if part and part.aircraft_type != aircraft.name:
-                return False
+                return False  # Permission denied
         return True  # Permission granted if conditions are met
