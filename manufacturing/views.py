@@ -1,10 +1,15 @@
+from django.contrib.auth.models import User
 from django.db import IntegrityError
 from rest_framework import viewsets, status
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view
 from rest_framework.exceptions import PermissionDenied
+from rest_framework.permissions import DjangoModelPermissionsOrAnonReadOnly, AllowAny, IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.views import APIView
+
 from manufacturing.models import Aircraft, Team, Part, Personnel, AircraftPart
-from manufacturing.serializers import AircraftSerializer, TeamSerializer, PartSerializer, PersonnelSerializer, AircraftPartSerializer
+from manufacturing.serializers import AircraftSerializer, TeamSerializer, PartSerializer, PersonnelSerializer, \
+    AircraftPartSerializer, UserSerializer
 from manufacturing.permissions import CanOnlyCreateAssignedPart, PartIsNotUsedInOtherAircraft, PartBelongsToAircraftType
 
 class AircraftViewSet(viewsets.ModelViewSet):
@@ -47,6 +52,7 @@ class TeamViewSet(viewsets.ModelViewSet):
     """
     queryset = Team.objects.all()
     serializer_class = TeamSerializer
+    permission_classes = [DjangoModelPermissionsOrAnonReadOnly]
 
 
 class PartViewSet(viewsets.ModelViewSet):
@@ -116,3 +122,31 @@ class AircraftPartViewSet(viewsets.ModelViewSet):
 
         # Save the serializer if all checks pass
         serializer.save()
+
+
+class UserView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        serializer = UserSerializer(request.user)
+        return Response(serializer.data)
+
+
+class RegisterView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        username = request.data.get('username')
+        password = request.data.get('password')
+        team_id = request.data.get('team')
+
+        # User oluştur
+        user = User.objects.create_user(username=username, password=password)
+
+        try:
+            team = Team.objects.get(id=team_id)
+            personnel = Personnel.objects.create(user=user, team=team)
+            personnel_serializer = PersonnelSerializer(personnel)
+            return Response(personnel_serializer.data, status=status.HTTP_201_CREATED)
+        except Team.DoesNotExist:
+            return Response({"error": "Team not found."}, status=status.HTTP_400_BAD_REQUEST)

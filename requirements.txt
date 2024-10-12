@@ -8,3 +8,4 @@ asgiref==3.6.0
 django-debug-toolbar==4.1.0
 python-dotenv==1.0.0
 coverage==7.6.2
+dj-rest-auth==6.0.0

@@ -1,3 +1,4 @@
+from django.contrib.auth.models import User
 from rest_framework import serializers
 from manufacturing.models import Aircraft, Team, Part, Personnel, AircraftPart
 
@@ -34,3 +35,8 @@ class AircraftPartSerializer(serializers.ModelSerializer):
     class Meta:
         model = AircraftPart
         fields = '__all__'
+
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['pk', 'username', 'email', 'first_name', 'last_name', 'is_staff', 'is_superuser']

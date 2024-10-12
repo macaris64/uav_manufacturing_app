@@ -39,3 +39,8 @@ docker-compose run web coverage html
 ```bash
 docker-compose run web python manage.py createsuperuser
 ```
+
+## Collect static files
+```bash
+docker-compose run web python manage.py collectstatic --noinput
+```
