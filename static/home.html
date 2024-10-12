@@ -1,0 +1,19 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Home</title>
+</head>
+<body>
+    <h1>Welcome to the Home Page</h1>
+
+    <h2>User Information</h2>
+    <p>Username: {{ user.username }}</p>
+    <p>Email: {{ user.email }}</p>
+    <p>Last Login: {{ user.last_login }}</p>
+    <p>Is Staff: {{ user.is_staff }}</p>
+
+    <a href="{% url 'logout' %}">Logout</a>
+</body>
+</html>
