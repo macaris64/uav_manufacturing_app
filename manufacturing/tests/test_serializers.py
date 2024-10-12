@@ -1,5 +1,6 @@
 from unittest import skip
 
+from django.contrib.auth.models import User
 from django.test import TestCase
 from manufacturing.models import Aircraft, Team, Part, Personnel, AircraftPart
 from manufacturing.serializers import (
@@ -113,19 +114,20 @@ class PartSerializerTests(TestCase):
 
 class PersonnelSerializerTests(TestCase):
     def setUp(self):
-        # Given: A Team object for Personnel association
+        # Given: A User and a Team object for Personnel association
         self.team = Team.objects.create(name='Wing Team')
-        self.personnel_data = {'name': 'John Doe', 'team': self.team.id, 'role': 'Engineer'}
+        self.user = User.objects.create_user(username='johndoe', password='password123')
+        self.personnel_data = {'user': self.user.id, 'team': self.team.id, 'role': 'Engineer'}
 
     def test_personnel_serialization(self):
         # When: Creating and serializing the Personnel object
-        personnel = Personnel.objects.create(name='John Doe', team=self.team, role='Engineer')
+        personnel = Personnel.objects.create(user=self.user, team=self.team, role='Engineer')
         serializer = PersonnelSerializer(personnel)
 
         # Then: The serialized data should match the object data exactly
         self.assertEqual(serializer.data, {
             'id': personnel.id,
-            'name': 'John Doe',
+            'user': self.user.id,
             'team': self.team.id,
             'role': 'Engineer'
         })
@@ -137,9 +139,10 @@ class PersonnelSerializerTests(TestCase):
         # Then: The serializer should be valid, and the object should be saved correctly
         self.assertTrue(serializer.is_valid(), serializer.errors)
         personnel = serializer.save()
-        self.assertEqual(personnel.name, 'John Doe')
+        self.assertEqual(personnel.user, self.user)
         self.assertEqual(personnel.team, self.team)
         self.assertEqual(personnel.role, 'Engineer')
+
 
 
 class AircraftPartSerializerTests(TestCase):

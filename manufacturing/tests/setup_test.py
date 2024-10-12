@@ -24,7 +24,8 @@ class ManufacturingTestSetup(APITestCase):
         self.body_team = Team.objects.create(name='Body Team', description='Responsible for body parts')
 
         # Create Personnel and assign to the Wing Team
-        self.personnel = Personnel.objects.create(name='John Doe', team=self.wing_team, role='Engineer')
+        self.personnel_user = User.objects.create_user(username='john_doe', password='password123')
+        self.personnel = Personnel.objects.create(user=self.personnel_user, team=self.wing_team, role='Engineer')
 
         # Create Parts and assign to the respective teams
         self.wing_part = Part.objects.create(name=Part.WING, aircraft_type='TB2')

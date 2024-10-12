@@ -1,5 +1,6 @@
 from unittest import skip
 
+from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.test import TestCase
@@ -353,13 +354,16 @@ class PersonnelModelTests(ManufacturingTestSetup, TestCase):
     """
 
     def test_create_personnel(self):
-        # Given: A Team
-        # When: Creating a new Personnel associated with the Team
-        new_personnel = Personnel.objects.create(name='Jane Doe', team=self.body_team, role='Technician')
+        # Given: An existing team from setUp
+        team = self.body_team
+
+        # When: Creating a new User and linking it to Personnel associated with the Team
+        user = User.objects.create_user(username='janedoe', password='password123')
+        new_personnel = Personnel.objects.create(user=user, team=team, role='Technician')
 
         # Then: The Personnel should be created successfully and counted correctly
-        self.assertEqual(new_personnel.name, 'Jane Doe')
-        self.assertEqual(new_personnel.team, self.body_team)
+        self.assertEqual(new_personnel.user.username, 'janedoe')
+        self.assertEqual(new_personnel.team, team)
         self.assertEqual(Personnel.objects.count(), 2)  # Including the one created in setUp
 
     def test_personnel_update_role(self):
@@ -371,3 +375,43 @@ class PersonnelModelTests(ManufacturingTestSetup, TestCase):
         # Then: The updated role should be saved correctly
         updated_personnel = Personnel.objects.get(id=self.personnel.id)
         self.assertEqual(updated_personnel.role, 'Senior Engineer')
+
+    def test_is_superuser_property(self):
+        # Given: A superuser User and a regular User, ensuring no duplicate Personnel for each User
+        superuser = User.objects.create_user(username='adminuser', password='password123')
+        superuser.is_superuser = True
+        superuser.save()
+
+        regular_user = User.objects.create_user(username='regularuser', password='password123')
+
+        # When: Creating Personnel for both users
+        superuser_personnel, _ = Personnel.objects.get_or_create(user=superuser, team=self.body_team, role='Admin')
+        regular_personnel, _ = Personnel.objects.get_or_create(user=regular_user, team=self.wing_team, role='Technician')
+
+        # Then: superuser_personnel should have is_superuser True, regular_personnel should have it False
+        self.assertTrue(superuser_personnel.is_superuser)
+        self.assertFalse(regular_personnel.is_superuser)
+
+    def test_update_team(self):
+        # Given: An existing Personnel with a team
+        new_team = Team.objects.create(name='New Team')
+
+        # When: Updating the Personnel's team
+        self.personnel.team = new_team
+        self.personnel.save()
+
+        # Then: The Personnel's team should be updated successfully
+        updated_personnel = Personnel.objects.get(id=self.personnel.id)
+        self.assertEqual(updated_personnel.team, new_team)
+
+    def test_delete_user_also_deletes_personnel(self):
+        # Given: A Personnel linked to a User
+        user = User.objects.create_user(username='deletetestuser', password='password123')
+        personnel = Personnel.objects.create(user=user, team=self.body_team, role='Test Role')
+
+        # When: Deleting the User
+        user.delete()
+
+        # Then: The linked Personnel should also be deleted
+        with self.assertRaises(Personnel.DoesNotExist):
+            Personnel.objects.get(user=user)

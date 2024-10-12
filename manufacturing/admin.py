@@ -1,7 +1,8 @@
 from django.contrib import admin
 from django.utils.translation import gettext_lazy as _
 from manufacturing.models import Aircraft, Team, Part, Personnel, AircraftPart
-from manufacturing.forms import AircraftPartAdminForm
+from manufacturing.forms import AircraftPartAdminForm, PersonnelAdminForm
+
 
 class AircraftPartAdmin(admin.ModelAdmin):
     form = AircraftPartAdminForm  # Specify the form
@@ -30,9 +31,14 @@ class AircraftAdmin(admin.ModelAdmin):
     list_display = ('name', 'serial_number', 'created_at', 'is_produced')
     readonly_fields = ('is_produced',)
 
+class PersonnelAdmin(admin.ModelAdmin):
+    form = PersonnelAdminForm
+    list_display = ['user', 'team', 'role']
+    search_fields = ['user__username', 'team__name', 'role']
+
 # Register your models here.
 admin.site.register(Aircraft, AircraftAdmin)
 admin.site.register(Team)
 admin.site.register(Part)
-admin.site.register(Personnel)
+admin.site.register(Personnel, PersonnelAdmin)
 admin.site.register(AircraftPart, AircraftPartAdmin)
