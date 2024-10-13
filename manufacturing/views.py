@@ -98,14 +98,15 @@ class PartViewSet(viewsets.ModelViewSet):
         - If the user's team is the Assembly Team, returns all parts.
         - Otherwise, filters parts to only include those that the user's team can produce.
         """
+        queryset = super().get_queryset()
         user_team = self.request.user.personnel.team
 
         # If the user's team is Assembly Team, return all parts
         if user_team.name == Team.ASSEMBLY_TEAM:
-            return self.queryset
+            return queryset
 
         # Otherwise, filter based on team
-        return self.queryset.filter(name__in=[
+        return queryset.filter(name__in=[
             Part.WING if user_team.name == Team.WING_TEAM else None,
             Part.BODY if user_team.name == Team.BODY_TEAM else None,
             Part.TAIL if user_team.name == Team.TAIL_TEAM else None,

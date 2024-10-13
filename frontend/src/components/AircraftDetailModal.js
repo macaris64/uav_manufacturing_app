@@ -22,26 +22,30 @@ const AircraftDetailModal = ({ isOpen, onClose, aircraft, onUpdate }) => {
     const [currentAircraftParts, setCurrentAircraftParts] = useState([]);
     const [errorMessage, setErrorMessage] = useState('');
 
-    useEffect(() => {
-        const fetchAvailableParts = async () => {
-            const token = localStorage.getItem('token');
-            try {
-                const response = await axios.get('/api/parts/', {
-                    headers: { Authorization: `Token ${token}` },
-                });
-                console.log('Available parts:', response.data);
-                setAvailableParts(response.data);
-            } catch (error) {
-                console.error('Error fetching available parts:', error);
-            }
-        };
+    const fetchAvailableParts = async () => {
+        const token = localStorage.getItem('token');
+        try {
+            const response = await axios.get('/api/parts/', {
+                headers: {
+                Authorization: `Token ${token}`,
+                    'Cache-Control': 'no-cache, no-store, must-revalidate',
+                    'Pragma': 'no-cache',
+                    'Expires': '0',
+                },
+            });
+            setAvailableParts(response.data);
+        } catch (error) {
+            console.error('Error fetching available parts:', error);
+        }
+    };
 
+    useEffect(() => {
         fetchAvailableParts();
     }, []);
 
     useEffect(() => {
         if (aircraft) {
-            setCurrentAircraftParts(aircraft.parts || []); // aircraft değiştiğinde güncelle
+            setCurrentAircraftParts(aircraft.parts || []);
         }
     }, [aircraft]);
 
@@ -51,13 +55,10 @@ const AircraftDetailModal = ({ isOpen, onClose, aircraft, onUpdate }) => {
 
     const handleAddPart = async (part) => {
         const token = localStorage.getItem('token');
-        console.log('Adding part:', part);
-
-        // Parça türünü kontrol et
         const partExists = currentAircraftParts.some(p => p.name === part.name);
         if (partExists) {
-            console.error(`Cannot add another ${part.name}. Only one part of this type can be added.`);
-            return; // Eklemeyi durdur
+            setErrorMessage(`Cannot add another ${part.name}. Only one part of this type can be added.`);
+            return; // Prevent adding the part
         }
 
         try {
@@ -68,11 +69,20 @@ const AircraftDetailModal = ({ isOpen, onClose, aircraft, onUpdate }) => {
                 headers: { Authorization: `Token ${token}` },
             });
 
-            // Local state'i güncelleyin
-            setCurrentAircraftParts(prev => [...prev, part]); // Yeni parça ekle
-            setAvailableParts(prev => prev.filter(p => p.id !== part.id)); // Eklendikten sonra mevcut parçaları güncelleyin
+            // Update the part's is_used status to true
+            await axios.patch(`/api/parts/${part.id}/`, { is_used: true }, {
+                headers: { Authorization: `Token ${token}` },
+            });
+
+            await fetchAvailableParts();
+
+            const updatedPart = await axios.get(`/api/parts/${part.id}/`, {
+                headers: { Authorization: `Token ${token}` },
+            });
+
+            setCurrentAircraftParts(prev => [...prev, updatedPart.data]);
             setErrorMessage('');
-            onUpdate(); // UI güncellemesi
+            onUpdate();
         } catch (error) {
             setErrorMessage('Error adding part: ' + (error.response ? error.response.data : error.message));
             console.error('Error adding part:', error);
@@ -81,26 +91,30 @@ const AircraftDetailModal = ({ isOpen, onClose, aircraft, onUpdate }) => {
 
     const handleRemovePart = async (part) => {
         const token = localStorage.getItem('token');
-        console.log('Removing part:', part);
         try {
-            // Öncelikle AircraftPart nesnesini bulun
+            // Find the AircraftPart object
             const response = await axios.get(`/api/aircraftparts/?part=${part.id}&aircraft=${aircraft.id}`, {
                 headers: { Authorization: `Token ${token}` },
             });
 
             if (response.data && response.data.length > 0) {
-                const aircraftPartId = response.data[0].id; // AircraftPart'ın id'sini alın
+                const aircraftPartId = response.data[0].id;
 
-                // Şimdi silme işlemini gerçekleştirin
+                // Remove the part from the aircraft
                 await axios.delete(`/api/aircraftparts/${aircraftPartId}/`, {
                     headers: { Authorization: `Token ${token}` },
                 });
 
-                // Local state'i güncelleyin
-                setCurrentAircraftParts(prev => prev.filter(p => p.id !== part.id)); // Kaldırılmış parçaları güncelleyin
-                setAvailableParts(prev => [...prev, part]); // Parçayı mevcut parçalar listesine ekleyin
+                // Update the part's is_used status to false
+                await axios.patch(`/api/parts/${part.id}/`, { is_used: false }, {
+                    headers: { Authorization: `Token ${token}` },
+                });
+
+                await fetchAvailableParts();
+
+                setCurrentAircraftParts(prev => prev.filter(p => p.id !== part.id));
                 setErrorMessage('');
-                onUpdate(); // UI güncellemesi
+                onUpdate();
             } else {
                 setErrorMessage('No matching AircraftPart found for the given part.');
                 console.error('No matching AircraftPart found for the given part.');
@@ -158,7 +172,7 @@ const AircraftDetailModal = ({ isOpen, onClose, aircraft, onUpdate }) => {
                             {value === 0 && (
                                 <Typography component="div" role="tabpanel" hidden={value !== 0}>
                                     <h4>Available Wings</h4>
-                                    {availableParts.filter(part => part.name === 'WING' && part.aircraft_type === aircraft.name).map((part) => (
+                                    {availableParts.filter(part => part.name === 'WING' && part.aircraft_type === aircraft.name && !currentAircraftParts.some(p => p.id === part.id)).map((part) => (
                                         <div key={part.id}>
                                             <span>{part.name}</span>
                                             <Button variant="outlined" onClick={() => handleAddPart(part)}>Add</Button>
@@ -169,7 +183,7 @@ const AircraftDetailModal = ({ isOpen, onClose, aircraft, onUpdate }) => {
                             {value === 1 && (
                                 <Typography component="div" role="tabpanel" hidden={value !== 1}>
                                     <h4>Available Body Parts</h4>
-                                    {availableParts.filter(part => part.name === 'BODY' && part.aircraft_type === aircraft.name).map((part) => (
+                                    {availableParts.filter(part => part.name === 'BODY' && part.aircraft_type === aircraft.name && !currentAircraftParts.some(p => p.id === part.id)).map((part) => (
                                         <div key={part.id}>
                                             <span>{part.name}</span>
                                             <Button variant="outlined" onClick={() => handleAddPart(part)}>Add</Button>
@@ -180,7 +194,7 @@ const AircraftDetailModal = ({ isOpen, onClose, aircraft, onUpdate }) => {
                             {value === 2 && (
                                 <Typography component="div" role="tabpanel" hidden={value !== 2}>
                                     <h4>Available Tail Parts</h4>
-                                    {availableParts.filter(part => part.name === 'TAIL' && part.aircraft_type === aircraft.name).map((part) => (
+                                    {availableParts.filter(part => part.name === 'TAIL' && part.aircraft_type === aircraft.name && !currentAircraftParts.some(p => p.id === part.id)).map((part) => (
                                         <div key={part.id}>
                                             <span>{part.name}</span>
                                             <Button variant="outlined" onClick={() => handleAddPart(part)}>Add</Button>
@@ -191,7 +205,7 @@ const AircraftDetailModal = ({ isOpen, onClose, aircraft, onUpdate }) => {
                             {value === 3 && (
                                 <Typography component="div" role="tabpanel" hidden={value !== 3}>
                                     <h4>Available Avionic Parts</h4>
-                                    {availableParts.filter(part => part.name === 'AVIONICS' && part.aircraft_type === aircraft.name).map((part) => (
+                                    {availableParts.filter(part => part.name === 'AVIONICS' && part.aircraft_type === aircraft.name && !currentAircraftParts.some(p => p.id === part.id)).map((part) => (
                                         <div key={part.id}>
                                             <span>{part.name}</span>
                                             <Button variant="outlined" onClick={() => handleAddPart(part)}>Add</Button>
