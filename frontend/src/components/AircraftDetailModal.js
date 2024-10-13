@@ -60,6 +60,11 @@ const AircraftDetailModal = ({ isOpen, onClose, aircraft, onUpdate }) => {
             setErrorMessage(`Cannot add another ${part.name}. Only one part of this type can be added.`);
             return; // Prevent adding the part
         }
+        const partExistsInCurrentAircraft = currentAircraftParts.some(p => p.id === part.id);
+        if (partExistsInCurrentAircraft) {
+            setErrorMessage(`Part ${part.name} is already installed on this aircraft.`);
+            return; // Prevent adding the part
+        }
 
         try {
             await axios.post('/api/aircraftparts/', {
@@ -172,7 +177,7 @@ const AircraftDetailModal = ({ isOpen, onClose, aircraft, onUpdate }) => {
                             {value === 0 && (
                                 <Typography component="div" role="tabpanel" hidden={value !== 0}>
                                     <h4>Available Wings</h4>
-                                    {availableParts.filter(part => part.name === 'WING' && part.aircraft_type === aircraft.name && !currentAircraftParts.some(p => p.id === part.id)).map((part) => (
+                                    {availableParts.filter(part => part.name === 'WING' && part.aircraft_type === aircraft.name && !part.is_used).map((part) => (
                                         <div key={part.id}>
                                             <span>{part.name}</span>
                                             <Button variant="outlined" onClick={() => handleAddPart(part)}>Add</Button>
@@ -183,7 +188,7 @@ const AircraftDetailModal = ({ isOpen, onClose, aircraft, onUpdate }) => {
                             {value === 1 && (
                                 <Typography component="div" role="tabpanel" hidden={value !== 1}>
                                     <h4>Available Body Parts</h4>
-                                    {availableParts.filter(part => part.name === 'BODY' && part.aircraft_type === aircraft.name && !currentAircraftParts.some(p => p.id === part.id)).map((part) => (
+                                    {availableParts.filter(part => part.name === 'BODY' && part.aircraft_type === aircraft.name && !part.is_used).map((part) => (
                                         <div key={part.id}>
                                             <span>{part.name}</span>
                                             <Button variant="outlined" onClick={() => handleAddPart(part)}>Add</Button>
@@ -194,7 +199,7 @@ const AircraftDetailModal = ({ isOpen, onClose, aircraft, onUpdate }) => {
                             {value === 2 && (
                                 <Typography component="div" role="tabpanel" hidden={value !== 2}>
                                     <h4>Available Tail Parts</h4>
-                                    {availableParts.filter(part => part.name === 'TAIL' && part.aircraft_type === aircraft.name && !currentAircraftParts.some(p => p.id === part.id)).map((part) => (
+                                    {availableParts.filter(part => part.name === 'TAIL' && part.aircraft_type === aircraft.name && !part.is_used).map((part) => (
                                         <div key={part.id}>
                                             <span>{part.name}</span>
                                             <Button variant="outlined" onClick={() => handleAddPart(part)}>Add</Button>
@@ -205,7 +210,7 @@ const AircraftDetailModal = ({ isOpen, onClose, aircraft, onUpdate }) => {
                             {value === 3 && (
                                 <Typography component="div" role="tabpanel" hidden={value !== 3}>
                                     <h4>Available Avionic Parts</h4>
-                                    {availableParts.filter(part => part.name === 'AVIONICS' && part.aircraft_type === aircraft.name && !currentAircraftParts.some(p => p.id === part.id)).map((part) => (
+                                    {availableParts.filter(part => part.name === 'AVIONICS' && part.aircraft_type === aircraft.name && !part.is_used).map((part) => (
                                         <div key={part.id}>
                                             <span>{part.name}</span>
                                             <Button variant="outlined" onClick={() => handleAddPart(part)}>Add</Button>

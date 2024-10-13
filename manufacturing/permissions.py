@@ -45,7 +45,9 @@ class PartIsNotUsedInOtherAircraft(BasePermission):
         if view.action == 'create':
             part_id = request.data.get('part')  # Retrieve the part ID from the request data
             # Check if the part already has an association with any aircraft
-            return not AircraftPart.objects.filter(part_id=part_id).exists()  # True if unused, False if used
+            part_in_use = AircraftPart.objects.filter(part_id=part_id).exists()
+            part_is_used = Part.objects.filter(id=part_id, is_used=True).exists()
+            return not (part_in_use and part_is_used)  # True if unused, False if used
         return True  # Permission granted if not a 'create' action
 
 
