@@ -6,6 +6,7 @@
 - Password: admin
 - Admin URL: http://localhost:8000/admin/
 - API URL: http://localhost:8000/api/
+- Web URL: http://localhost:8000/
 
 ## Screenshots
 ![Screenshot 2024-10-13 at 14 24 28](https://github.com/user-attachments/assets/173e8afb-f38d-47e4-8562-d89211225f5d)
@@ -20,16 +21,20 @@
 
 ![Screenshot 2024-10-13 at 14 27 11](https://github.com/user-attachments/assets/a5368415-0d4d-490e-9f0c-99c61f169836)
 
+![Screenshot 2024-10-13 at 14 38 38](https://github.com/user-attachments/assets/cd07c338-aab7-4108-ad9d-41e275201667)
 
 ## Run the application
-```bash
-docker-compose up
-```
 
-## Migrate the database
+You must create a superuser before running the application.
+
 ```bash
+docker-compose build
 docker-compose run web python manage.py makemigrations
 docker-compose run web python manage.py migrate
+docker-compose run web python manage.py createsuperuser
+docker-compose run web python manage.py collectstatic --noinput
+docker-compose up
+npm run build
 ```
 
 ## Run all tests
@@ -47,14 +52,4 @@ docker-compose run web python manage.py test manufacturing.tests.test_models
 docker-compose run web coverage run --source='.' manage.py test manufacturing.tests
 docker-compose run web coverage report
 docker-compose run web coverage html
-```
-
-## Create a Superuser
-```bash
-docker-compose run web python manage.py createsuperuser
-```
-
-## Collect static files
-```bash
-docker-compose run web python manage.py collectstatic --noinput
 ```
