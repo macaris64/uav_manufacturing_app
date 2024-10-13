@@ -7,6 +7,8 @@
 - Admin URL: http://localhost:8000/admin/
 - API URL: http://localhost:8000/api/
 - Web URL: http://localhost:8000/
+- Swagger URL: http://localhost:8000/swagger/
+- Redoc URL: http://localhost:8000/redoc/
 
 ## Screenshots
 ![Screenshot 2024-10-13 at 14 24 28](https://github.com/user-attachments/assets/173e8afb-f38d-47e4-8562-d89211225f5d)
