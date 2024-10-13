@@ -25,16 +25,39 @@
 
 ## Run the application
 
-You must create a superuser before running the application.
+#### You must create a .env file.
+
+```txt
+POSTGRES_DB=uav_manufacturing_db
+POSTGRES_USER=user
+POSTGRES_PASSWORD=password
+POSTGRES_HOST=db
+POSTGRES_PORT=5432
+DEBUG=True
+```
+
+#### You must create a superuser before running the application.
 
 ```bash
 docker-compose build
 docker-compose run web python manage.py makemigrations
 docker-compose run web python manage.py migrate
 docker-compose run web python manage.py createsuperuser
-docker-compose run web python manage.py collectstatic --noinput
-docker-compose up
+```
+
+#### After that, build the frontend application and collect static files.
+
+```bash
+cd frontend
 npm run build
+cd ..
+docker-compose run web python manage.py collectstatic --noinput
+```
+
+#### And run the application
+
+```bash
+docker-compose up
 ```
 
 ## Run all tests
