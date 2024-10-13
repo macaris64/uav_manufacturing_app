@@ -45,6 +45,18 @@ class AircraftViewSet(viewsets.ModelViewSet):
 
         return Response({"success": "All parts are available for assembly."})
 
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
+
+        # Uçak parçalarını da ekleyin
+        parts = instance.aircraftpart_set.select_related('part').all()  # 'part' ile ilişkilendirilmiş parçaları seçin
+        serialized_parts = PartSerializer([part.part for part in parts], many=True).data  # part nesnelerini al
+
+        data = serializer.data
+        data['parts'] = serialized_parts  # Parçaları yanıt verisine ekleyin
+        return Response(data)
+
 
 class TeamViewSet(viewsets.ModelViewSet):
     """
@@ -83,9 +95,16 @@ class PartViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         """
         Retrieves the queryset of parts based on the user's team.
-        - Filters parts to only include those that the user's team can produce.
+        - If the user's team is the Assembly Team, returns all parts.
+        - Otherwise, filters parts to only include those that the user's team can produce.
         """
         user_team = self.request.user.personnel.team
+
+        # If the user's team is Assembly Team, return all parts
+        if user_team.name == Team.ASSEMBLY_TEAM:
+            return self.queryset
+
+        # Otherwise, filter based on team
         return self.queryset.filter(name__in=[
             Part.WING if user_team.name == Team.WING_TEAM else None,
             Part.BODY if user_team.name == Team.BODY_TEAM else None,

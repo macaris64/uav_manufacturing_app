@@ -1,6 +1,7 @@
 import React from 'react';
 
 const UserProfile = ({ user }) => {
+    const teamName = user && user.personnel && user.personnel.team ? user.personnel.team.name : 'No Team Assigned';
     return (
         <div style={styles.profileContainer}>
             <img
@@ -9,8 +10,8 @@ const UserProfile = ({ user }) => {
                 style={styles.avatar}
             />
             <div style={styles.userInfo}>
-                <h2>{user.username}</h2>
-                <p>Team: {user.personnel.team.name ? user.personnel.team.name : 'No Team Assigned'}</p>
+                <h2>{user ? user.username : 'Loading...'}</h2>
+                <p>Team: {teamName}</p>
             </div>
         </div>
     );

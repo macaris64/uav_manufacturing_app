@@ -3,16 +3,6 @@ from rest_framework import serializers
 from manufacturing.models import Aircraft, Team, Part, Personnel, AircraftPart
 
 
-class AircraftSerializer(serializers.ModelSerializer):
-    """
-    Serializer for the Aircraft model.
-    Serializes all fields of the Aircraft model.
-    """
-    class Meta:
-        model = Aircraft
-        fields = '__all__'  # Include all fields in the serialization
-
-
 class TeamSerializer(serializers.ModelSerializer):
     """
     Serializer for the Team model.
@@ -45,6 +35,18 @@ class PartSerializer(serializers.ModelSerializer):
         Creates and returns a new Part instance.
         """
         return Part.objects.create(**validated_data)  # Create Part with validated data
+
+
+class AircraftSerializer(serializers.ModelSerializer):
+    """
+    Serializer for the Aircraft model.
+    Serializes all fields of the Aircraft model.
+    """
+    parts = PartSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Aircraft
+        fields = '__all__'  # Include all fields in the serialization
 
 
 class PersonnelSerializer(serializers.ModelSerializer):
